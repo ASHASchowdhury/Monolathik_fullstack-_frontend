@@ -1,8 +1,6 @@
 import React, { useState } from "react";
-import EmployeeForm from "./components/EmployeeForm";
-import EmployeeList from "./components/EmployeeList";
-import DepartmentForm from "./components/DepartmentForm";
-import DepartmentList from "./components/DepartmentList";
+import EmployeePage from "./pages/EmployeePage";
+import DepartmentPage from "./pages/DepartmentPage";
 import "./App.css";
 
 function App() {
@@ -16,19 +14,8 @@ function App() {
         <button onClick={() => setView("departments")}>Departments</button>
       </div>
 
-      {view === "employees" && (
-        <>
-          <EmployeeForm />
-          <EmployeeList />
-        </>
-      )}
-
-      {view === "departments" && (
-        <>
-          <DepartmentForm />
-          <DepartmentList />
-        </>
-      )}
+      {view === "employees" && <EmployeePage />}
+      {view === "departments" && <DepartmentPage />}
     </div>
   );
 }
