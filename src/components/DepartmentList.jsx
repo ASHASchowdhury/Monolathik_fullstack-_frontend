@@ -2,16 +2,12 @@ import React, { useState } from "react";
 import axios from "axios";
 import { FaTrash, FaEye, FaEdit, FaTimes } from "react-icons/fa";
 
-
-function DepartmentList({ departments, onDepartmentDeleted, onEditDepartment, }) {
+function DepartmentList({ departments, onDepartmentDeleted, onEditDepartment }) {
   const [selectedDepartment, setSelectedDepartment] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState({ show: false, deptId: null });
 
   const deleteDepartment = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this department?")) {
-      return;
-    }
-    
     try {
       await axios.delete(`http://10.0.6.1:8080/departments/${id}`);
       onDepartmentDeleted(); // refresh after delete
@@ -24,7 +20,6 @@ function DepartmentList({ departments, onDepartmentDeleted, onEditDepartment, })
   const handleViewDepartment = (dept) => {
     setSelectedDepartment(dept);
     setIsModalOpen(true);
-   
   };
 
   const closeModal = () => {
@@ -65,10 +60,10 @@ function DepartmentList({ departments, onDepartmentDeleted, onEditDepartment, })
                 </button>
                 <button
                   className="action-button delete-btn"
-                  onClick={() => deleteDepartment(dept.id)}
+                  onClick={() => setConfirmDelete({ show: true, deptId: dept.id })}
                   title="Delete"
                 >
-                  <FaTrash size={18}/>
+                  <FaTrash size={18} />
                 </button>
               </td>
             </tr>
@@ -76,7 +71,7 @@ function DepartmentList({ departments, onDepartmentDeleted, onEditDepartment, })
         </tbody>
       </table>
 
-      {/* Modal Popup */}
+      {/* Department Details Modal */}
       {isModalOpen && selectedDepartment && (
         <div className="modal-overlay">
           <div className="modal-content">
@@ -86,37 +81,81 @@ function DepartmentList({ departments, onDepartmentDeleted, onEditDepartment, })
                 <FaTimes size={20} />
               </button>
             </div>
-            
+
             <div className="modal-body">
               <div className="detail-row">
                 <span className="detail-label">ID:</span>
                 <span className="detail-value">{selectedDepartment.id}</span>
               </div>
-              
+
               <div className="detail-row">
                 <span className="detail-label">Name:</span>
                 <span className="detail-value">{selectedDepartment.name}</span>
               </div>
-              
-              {/* You can add more department details here if available */}
+
               {selectedDepartment.description && (
                 <div className="detail-row">
                   <span className="detail-label">Description:</span>
-                  <span className="detail-value">{selectedDepartment.description}</span>
+                  <span className="detail-value">
+                    {selectedDepartment.description}
+                  </span>
                 </div>
               )}
-              
+
               {selectedDepartment.createdDate && (
                 <div className="detail-row">
                   <span className="detail-label">Created Date:</span>
-                  <span className="detail-value">{selectedDepartment.createdDate}</span>
+                  <span className="detail-value">
+                    {selectedDepartment.createdDate}
+                  </span>
                 </div>
               )}
             </div>
-            
+
             <div className="modal-footer">
               <button className="modal-ok-btn" onClick={closeModal}>
                 OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {confirmDelete.show && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>Confirm Deletion</h3>
+              <button
+                className="modal-close-btn"
+                onClick={() => setConfirmDelete({ show: false, deptId: null })}
+              >
+                <FaTimes size={20} />
+              </button>
+            </div>
+
+            <div className="modal-body">
+              <p>Are you sure you want to delete this department?</p>
+            </div>
+
+            <div className="modal-footer">
+              <button
+                className="modal-ok-btn"
+                style={{ backgroundColor: "red" }}
+                onClick={async () => {
+                  await deleteDepartment(confirmDelete.deptId);
+                  setConfirmDelete({ show: false, deptId: null });
+                }}
+              >
+                Yes, Delete
+              </button>
+              <button
+                className="modal-ok-btn"
+                style={{ backgroundColor: "gray" }}
+                onClick={() => setConfirmDelete({ show: false, deptId: null })}
+              >
+                Cancel
               </button>
             </div>
           </div>
@@ -234,6 +273,8 @@ function DepartmentList({ departments, onDepartmentDeleted, onEditDepartment, })
           justify-content: flex-end;
           background-color: #f8f9fa;
           border-radius: 0 0 8px 8px;
+          gap: 10px;
+          margin-left: 10px;
         }
 
         .modal-ok-btn {
@@ -256,13 +297,13 @@ function DepartmentList({ departments, onDepartmentDeleted, onEditDepartment, })
             width: 95%;
             margin: 10px;
           }
-          
+
           .detail-row {
             flex-direction: column;
             align-items: flex-start;
             gap: 5px;
           }
-          
+
           .detail-value {
             text-align: left;
           }

@@ -32,7 +32,7 @@ function EmployeePage() {
   const handleViewEmployee = (employee) =>{
     console.log("Viewing employee :" ,employee);
 
-    setSelectedEmployee(employee);
+    setSelectedEmployee(employee)
   }
 
   return (
