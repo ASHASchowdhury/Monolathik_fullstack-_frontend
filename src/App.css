@@ -1,10 +1,14 @@
-/* Styles specific to App.jsx */
+/* General Container */
 .container {
-  max-width: 800px;
+  max-width: 1000px;
   margin: auto;
   padding: 20px;
+  background-color: #afbff3;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
 }
 
+/* Navigation Buttons */
 .nav button {
   margin-right: 10px;
   padding: 5px 10px;
@@ -20,7 +24,7 @@
   color: #ffffff; 
 }
 
-/* === UPDATED FORM STYLING (REPLACE THE OLD ONE) === */
+/* Form Styling */
 .form {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -60,7 +64,7 @@
   border: 1px solid #097e9e;
   border-radius: 4px;
   background-color: #989cda;
-  grid-column: span 2; /* Make it full width */
+  grid-column: span 2; /* Full width */
 }
 
 .radio-container span {
@@ -85,12 +89,12 @@
 
 .radio-container input[type="radio"]:checked + label {
   background-color: #3d28fa;
-  color: rgb(255, 255, 255);
+  color: #ffffff;
 }
 
 .radio-container label:hover {
   background-color: #d82525;
-  transform: translateY(-1px); /* subtle lift effect */
+  transform: translateY(-1px);
   box-shadow: 0 2px 5px rgb(59, 1, 1);
 }
 
@@ -104,8 +108,7 @@
   grid-column: span 2;
 }
 
-/* Submit button - full width and smaller */
-/* Alternative - button aligned to right with full right-side placement */
+/* Submit button */
 .form button[type="submit"] {
   grid-column: 2;       
   justify-self: end;    
@@ -129,21 +132,19 @@
   box-shadow: 0 2px 5px rgba(0,0,0,0.2);
 }
 
-
 /* Heading full width */
 .form h2 {
   grid-column: span 2;
   text-align: center;
   margin-bottom: 10px;
 }
-/* === END OF UPDATED FORM STYLING === */
 
-/* Keep your existing button styles for other buttons */
+/* Buttons (general) */
 button {
   padding: 8px 15px;
   cursor: pointer;
   background-color: #6366f1;
-  color: rgb(255, 255, 255);
+  color: #fff;
   border: none;
   font-weight: bold;
   border-radius: 5px;
@@ -157,6 +158,7 @@ button:hover {
   box-shadow: 0 2px 5px rgba(0,0,0,0.2);
 }
 
+/* Table Basics */
 table {
   width: 100%;
   border-collapse: collapse;
@@ -172,331 +174,10 @@ th, td {
   text-align: left;
 }
 
+/* Body */
 body {
   background-color: #003666; 
   font-family: 'Saira', sans-serif;
   margin: 0;
   padding: 0;
 }
-
-.container {
-  max-width: 1000px;
-  margin: auto;
-  padding: 20px;
-  background-color: #afbff3;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-}
-
-/* Action buttons (keep existing) */
-.action-button {
-  margin: 0 5px;
-  padding: 5px 8px;
-  border: none;
-  background: none;
-  cursor: pointer;
-  border-radius: 3px;
-  height: auto;
-}
-
-.action-button:hover {
-  background-color: #f0f0f0;
-}
-
-.update-btn { color: #007bff; }
-.view-btn { color: #28a745; }
-.delete-btn { color: #dc3545; }
-
-.update-btn:hover { background-color: #e3f2fd; }
-.view-btn:hover { background-color: #e8f5e8; }
-.delete-btn:hover { background-color: #fde8e8; }
-
-
-.label-bold {
-  font-weight: bold;
-}
-
-
-
-/* the midle pop up form   Employee*/
-/* Modal Styles */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  background: white;
-  border-radius: 8px;
-  width: 90%;
-  max-width: 500px;
-  max-height: 80vh;
-  overflow-y: auto;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-  animation: modalAppear 0.3s ease-out;
-}
-
-@keyframes modalAppear {
-  from {
-    opacity: 0;
-    transform: scale(0.9) translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px;
-  border-bottom: 1px solid #eee;
-  background-color: #f8f9fa;
-  border-radius: 8px 8px 0 0;
-}
-
-.modal-header h3 {
-  margin: 0;
-  color: #333;
-}
-
-.modal-close-btn {
-  background: none;
-  border: none;
-  font-size: 20px;
-  cursor: pointer;
-  color: #666;
-  padding: 5px;
-  border-radius: 50%;
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.modal-close-btn:hover {
-  background-color: #e9ecef;
-  color: #333;
-}
-
-.modal-body {
-  padding: 20px;
-}
-
-.detail-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 0;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.detail-row:last-child {
-  border-bottom: none;
-}
-
-.detail-label {
-  font-weight: bold;
-  color: #555;
-  min-width: 120px;
-}
-
-.detail-value {
-  color: #333;
-  text-align: right;
-  flex: 1;
-}
-
-.modal-footer {
-  padding: 15px 20px;
-  border-top: 1px solid #eee;
-  display: flex;
-  justify-content: flex-end;
-  background-color: #f8f9fa;
-  border-radius: 0 0 8px 8px;
-}
-
-.modal-ok-btn {
-  padding: 8px 20px;
-  background-color: #6366f1;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: bold;
-}
-
-.modal-ok-btn:hover {
-  background-color: #3e13b4;
-}
-
-/* Responsive Design */
-@media (max-width: 600px) {
-  .modal-content {
-    width: 95%;
-    margin: 10px;
-  }
-  
-  .detail-row {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 5px;
-  }
-  
-  .detail-value {
-    text-align: left;
-  }
-}
-/* the midle pop up form   Employee*/
-
-/* the midle pop up form   Department*/
-/* Modal Styles for Department List */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  background: white;
-  border-radius: 8px;
-  width: 90%;
-  max-width: 450px;
-  max-height: 80vh;
-  overflow-y: auto;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-  animation: modalAppear 0.3s ease-out;
-}
-
-@keyframes modalAppear {
-  from {
-    opacity: 0;
-    transform: scale(0.9) translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px;
-  border-bottom: 1px solid #eee;
-  background-color: #f8f9fa;
-  border-radius: 8px 8px 0 0;
-}
-
-.modal-header h3 {
-  margin: 0;
-  color: #333;
-}
-
-.modal-close-btn {
-  background: none;
-  border: none;
-  font-size: 20px;
-  cursor: pointer;
-  color: #666;
-  padding: 5px;
-  border-radius: 50%;
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.modal-close-btn:hover {
-  background-color: #e9ecef;
-  color: #333;
-}
-
-.modal-body {
-  padding: 20px;
-}
-
-.detail-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 0;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.detail-row:last-child {
-  border-bottom: none;
-}
-
-.detail-label {
-  font-weight: bold;
-  color: #555;
-  min-width: 120px;
-}
-
-.detail-value {
-  color: #333;
-  text-align: right;
-  flex: 1;
-}
-
-.modal-footer {
-  padding: 15px 20px;
-  border-top: 1px solid #eee;
-  display: flex;
-  justify-content: flex-end;
-  background-color: #f8f9fa;
-  border-radius: 0 0 8px 8px;
-}
-
-.modal-ok-btn {
-  padding: 8px 20px;
-  background-color: #6366f1;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: bold;
-}
-
-.modal-ok-btn:hover {
-  background-color: #3e13b4;
-}
-
-/* Responsive Design */
-@media (max-width: 600px) {
-  .modal-content {
-    width: 95%;
-    margin: 10px;
-  }
-  
-  .detail-row {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 5px;
-  }
-  
-  .detail-value {
-    text-align: left;
-  }
-}  

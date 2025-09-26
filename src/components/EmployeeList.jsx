@@ -1,11 +1,40 @@
 import React, { useState } from "react";
 import axios from "axios";
-import { FaTrash, FaEye, FaEdit, FaTimes } from "react-icons/fa";
+import {
+  FaTrash,
+  FaEye,
+  FaEdit,
+  FaUser,
+  FaBuilding,
+  FaVenusMars,
+  FaPhone,
+  FaCheck,
+  FaTimes,
+  FaSearch,
+  FaFilter,
+  FaMale,
+  FaFemale,
+  FaNeuter,
+  FaTint,
+  FaCalendarAlt,
+  FaTimes as FaClose
+} from "react-icons/fa";
+import "./EmployeeList.css";
 
-function EmployeeList({ employees, onEmployeeDeleted, onEditEmployee, onViewEmployee }) {
-  const [selectedEmployee, setSelectedEmployee] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState({ show: false, empId: null });
+function EmployeeList({ employees, onEmployeeDeleted, onEditEmployee }) {
+  const [confirmDelete, setConfirmDelete] = useState({ show: false, empId: null, empName: "" });
+  const [viewEmployee, setViewEmployee] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+
+  const filteredEmployees = employees.filter(emp => {
+    const matchesSearch = emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         emp.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === "all" || 
+                         (statusFilter === "active" && emp.active) ||
+                         (statusFilter === "inactive" && !emp.active);
+    return matchesSearch && matchesStatus;
+  });
 
   const deleteEmployee = async (id) => {
     try {
@@ -13,85 +42,242 @@ function EmployeeList({ employees, onEmployeeDeleted, onEditEmployee, onViewEmpl
       onEmployeeDeleted();
     } catch (err) {
       console.error("Error deleting employee:", err);
-      alert("Error deleting employee");
+    }
+  };
+
+  const getGenderIcon = (gender) => {
+    switch (gender?.toLowerCase()) {
+      case "male":
+        return <FaMale className="gender-icon male" />;
+      case "female":
+        return <FaFemale className="gender-icon female" />;
+      default:
+        return <FaNeuter className="gender-icon other" />;
     }
   };
 
   const handleViewEmployee = (emp) => {
-    setSelectedEmployee(emp);
-    setIsModalOpen(true);
-    if (onViewEmployee) onViewEmployee(emp);
+    setViewEmployee(emp);
   };
 
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setSelectedEmployee(null);
+  const calculateAge = (dateString) => {
+    if (!dateString) return 'N/A';
+    const today = new Date();
+    const birthDate = new Date(dateString);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
   };
 
   return (
-    <div className="list">
-      <h2>Employees</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Phone Number</th>
-            <th>Gender</th>
-            <th>Active</th>
-            <th>Department</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {employees.map((emp) => (
-            <tr key={emp.id}>
-              <td>{emp.id}</td>
-              <td>{emp.name}</td>
-              <td>{emp.email}</td>
-              <td>{emp.phoneNumber}</td>
-              <td>{emp.gender}</td>
-              <td>{emp.active ? "Yes" : "No"}</td>
-              <td>{emp.departmentDTO?.name || "N/A"}</td>
-              <td>
-                <button className="action-button update-btn" onClick={() => onEditEmployee(emp)} title="Edit">
-                  <FaEdit size={18} />
-                </button>
-                <button className="action-button view-btn" onClick={() => handleViewEmployee(emp)} title="View">
-                  <FaEye size={18} />
-                </button>
-                <button className="action-button delete-btn" onClick={() => setConfirmDelete({ show: true, empId: emp.id })} title="Delete">
-                  <FaTrash size={18} />
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      {/* View Modal */}
-      {isModalOpen && selectedEmployee && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3>Employee Details</h3>
-              <button className="modal-close-btn" onClick={closeModal}><FaTimes size={20} /></button>
+    <div className="modern-employee-list">
+      <div className="list-header">
+        <div className="header-content">
+          <div className="header-title">
+            <h2>Employee Management</h2>
+            <span className="employee-count">{filteredEmployees.length} of {employees.length} employees</span>
+          </div>
+          <div className="header-actions">
+            <div className="search-box">
+              <FaSearch className="search-icon" />
+              <input
+                type="text"
+                placeholder="Search employees..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="search-input"
+              />
             </div>
-            <div className="modal-body">
-              {["id","name","email","phoneNumber","gender","active"].map((key) => (
-                <div className="detail-row" key={key}>
-                  <span className="detail-label">{key === "active" ? "Active" : key.charAt(0).toUpperCase() + key.slice(1)}:</span>
-                  <span className="detail-value">{key === "active" ? (selectedEmployee[key] ? "Yes" : "No") : selectedEmployee[key]}</span>
-                </div>
-              ))}
-              <div className="detail-row">
-                <span className="detail-label">Department:</span>
-                <span className="detail-value">{selectedEmployee.departmentDTO?.name || "N/A"}</span>
+            <div className="filter-group">
+              <FaFilter className="filter-icon" />
+              <select 
+                value={statusFilter} 
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="filter-select"
+              >
+                <option value="all">All Status</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="employee-grid">
+        {filteredEmployees.map((emp) => (
+          <div key={emp.id} className="modern-employee-card">
+            <div className="card-header">
+              <div className="employee-avatar">
+                <FaUser />
+              </div>
+              <div className="employee-info">
+                <h3>{emp.name}</h3>
+                <span className="employee-id">#{emp.id}</span>
+              </div>
+              <div className={`status-indicator ${emp.active ? 'active' : 'inactive'}`}>
+                {emp.active ? <FaCheck /> : <FaTimes />}
               </div>
             </div>
+
+            <div className="card-body">
+              <div className="info-item">
+                <FaBuilding className="info-icon" />
+                <span>{emp.departmentDTO?.name || "No Department"}</span>
+              </div>
+              <div className="info-item">
+                <FaVenusMars className="info-icon" />
+                <span className="gender-info">
+                  {getGenderIcon(emp.gender)}
+                  {emp.gender || "Not specified"}
+                </span>
+              </div>
+              <div className="info-item">
+                <FaPhone className="info-icon" />
+                <span>{emp.phoneNumber || "No phone"}</span>
+              </div>
+              {emp.bloodGroup && (
+                <div className="info-item">
+                  <FaTint className="info-icon" />
+                  <span className="blood-group">{emp.bloodGroup}</span>
+                </div>
+              )}
+              <div className="info-item">
+                <span className={`status-badge ${emp.active ? 'active' : 'inactive'}`}>
+                  {emp.active ? "Active" : "Inactive"}
+                </span>
+              </div>
+            </div>
+
+            <div className="card-actions">
+              <button 
+                className="action-btn view-btn" 
+                onClick={() => handleViewEmployee(emp)}
+                title="View Details"
+              >
+                <FaEye />
+              </button>
+              <button 
+                className="action-btn edit-btn" 
+                onClick={() => onEditEmployee(emp)}
+                title="Edit Employee"
+              >
+                <FaEdit />
+              </button>
+              <button 
+                className="action-btn delete-btn" 
+                onClick={() => setConfirmDelete({ show: true, empId: emp.id, empName: emp.name })}
+                title="Delete Employee"
+              >
+                <FaTrash />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {filteredEmployees.length === 0 && (
+        <div className="empty-state">
+          <FaUser className="empty-icon" />
+          <h3>No employees found</h3>
+          <p>Try adjusting your search or filter criteria</p>
+        </div>
+      )}
+
+      {/* Employee Details View Modal */}
+      {viewEmployee && (
+        <div className="modern-modal-overlay">
+          <div className="employee-details-modal">
+            <div className="modal-header">
+              <h2>Employee Details</h2>
+              <button className="modal-close" onClick={() => setViewEmployee(null)}>
+                <FaClose />
+              </button>
+            </div>
+            
+            <div className="details-content">
+              <div className="details-header">
+                <div className="details-avatar">
+                  <FaUser />
+                </div>
+                <div className="details-title">
+                  <h3>{viewEmployee.name}</h3>
+                  <p className="employee-id">Employee ID: #{viewEmployee.id}</p>
+                  <span className={`details-status ${viewEmployee.active ? 'active' : 'inactive'}`}>
+                    {viewEmployee.active ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="details-grid">
+                <div className="detail-item">
+                  <label>Email</label>
+                  <p>{viewEmployee.email || "N/A"}</p>
+                </div>
+                <div className="detail-item">
+                  <label>Phone Number</label>
+                  <p>{viewEmployee.phoneNumber || "N/A"}</p>
+                </div>
+                <div className="detail-item">
+                  <label>Gender</label>
+                  <p className="gender-detail">
+                    {getGenderIcon(viewEmployee.gender)}
+                    {viewEmployee.gender ? viewEmployee.gender.charAt(0).toUpperCase() + viewEmployee.gender.slice(1) : "N/A"}
+                  </p>
+                </div>
+                <div className="detail-item">
+                  <label>Blood Group</label>
+                  <p className="blood-group-detail">
+                    {viewEmployee.bloodGroup ? (
+                      <>
+                        <FaTint />
+                        {viewEmployee.bloodGroup}
+                      </>
+                    ) : "N/A"}
+                  </p>
+                </div>
+                <div className="detail-item">
+                  <label>Date of Birth</label>
+                  <p>{formatDate(viewEmployee.dateOfBirth)}</p>
+                </div>
+                <div className="detail-item">
+                  <label>Age</label>
+                  <p>{calculateAge(viewEmployee.dateOfBirth)} years</p>
+                </div>
+                <div className="detail-item full-width">
+                  <label>Department</label>
+                  <p className="department-detail">
+                    <FaBuilding />
+                    {viewEmployee.departmentDTO?.name || "No Department Assigned"}
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <div className="modal-footer">
-              <button className="modal-ok-btn" onClick={closeModal}>OK</button>
+              <button 
+                className="edit-profile-btn"
+                onClick={() => {
+                  onEditEmployee(viewEmployee);
+                  setViewEmployee(null);
+                }}
+              >
+                <FaEdit />
+                Edit Profile
+              </button>
             </div>
           </div>
         </div>
@@ -99,48 +285,38 @@ function EmployeeList({ employees, onEmployeeDeleted, onEditEmployee, onViewEmpl
 
       {/* Delete Confirmation Modal */}
       {confirmDelete.show && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3>Confirm Deletion</h3>
-              <button className="modal-close-btn" onClick={() => setConfirmDelete({ show: false, empId: null })}>
-                <FaTimes size={20} />
-              </button>
+        <div className="modern-modal-overlay">
+          <div className="delete-confirmation">
+            <div className="delete-header">
+              <div className="warning-icon">
+                <FaTrash />
+              </div>
+              <h3>Delete Employee</h3>
             </div>
-            <div className="modal-body">
-              <p>Are you sure you want to delete this employee?</p>
+            <div className="delete-content">
+              <p>Are you sure you want to delete <strong>{confirmDelete.empName}</strong>?</p>
+              <p className="warning-text">This action cannot be undone and will permanently remove the employee record.</p>
             </div>
-            <div className="modal-footer">
-              <button className="modal-ok-btn danger" onClick={async () => { await deleteEmployee(confirmDelete.empId); setConfirmDelete({ show: false, empId: null }); }}>
-                Yes, Delete
-              </button>
-              <button className="modal-ok-btn secondary" onClick={() => setConfirmDelete({ show: false, empId: null })}>
+            <div className="delete-actions">
+              <button
+                className="btn-cancel"
+                onClick={() => setConfirmDelete({ show: false, empId: null, empName: "" })}
+              >
                 Cancel
+              </button>
+              <button
+                className="btn-confirm"
+                onClick={async () => {
+                  await deleteEmployee(confirmDelete.empId);
+                  setConfirmDelete({ show: false, empId: null, empName: "" });
+                }}
+              >
+                Delete Employee
               </button>
             </div>
           </div>
         </div>
       )}
-
-      <style jsx>{`
-        .modal-footer {
-          display: flex;
-          justify-content: flex-end;
-          gap: 12px;
-        }
-        .modal-ok-btn {
-          padding: 8px 20px;
-          border: none;
-          border-radius: 4px;
-          cursor: pointer;
-          font-weight: bold;
-          color: white;
-        }
-        .modal-ok-btn.danger { background-color: #ef4444; }
-        .modal-ok-btn.danger:hover { background-color: #dc2626; }
-        .modal-ok-btn.secondary { background-color: #6b7280; }
-        .modal-ok-btn.secondary:hover { background-color: #4b5563; }
-      `}</style>
     </div>
   );
 }
