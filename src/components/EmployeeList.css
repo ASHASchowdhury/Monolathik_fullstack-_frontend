@@ -1,5 +1,6 @@
-/* Modern Form Styles */
+/* ===== MODERN FORM STYLES ===== */
 .modern-form {
+  /* Main form container styling */
   background: #ffffff;
   border-radius: 16px;
   padding: 2rem;
@@ -7,6 +8,7 @@
   border: 1px solid #e1e5e9;
 }
 
+/* Form header section with title and icon */
 .form-header {
   display: flex;
   justify-content: space-between;
@@ -16,6 +18,7 @@
   border-bottom: 2px solid #f1f3f4;
 }
 
+/* Form title styling */
 .form-header h2 {
   color: #1a1d21;
   font-size: 1.5rem;
@@ -23,6 +26,7 @@
   margin: 0;
 }
 
+/* Decorative icon container */
 .form-icon {
   width: 48px;
   height: 48px;
@@ -35,6 +39,7 @@
   font-size: 1.2rem;
 }
 
+/* Two-column form layout */
 .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -42,15 +47,18 @@
   margin-bottom: 2rem;
 }
 
+/* Individual form field container */
 .form-group {
   display: flex;
   flex-direction: column;
 }
 
+/* Form field that spans full width */
 .form-group.full-width {
   grid-column: 1 / -1;
 }
 
+/* Label styling with icon */
 .input-label {
   display: flex;
   align-items: center;
@@ -61,11 +69,13 @@
   font-size: 0.9rem;
 }
 
+/* Icon inside labels */
 .input-icon {
   color: #6b7280;
   font-size: 0.9rem;
 }
 
+/* Input and select field styling */
 .modern-input, .modern-select {
   padding: 0.75rem 1rem;
   border: 2px solid #e5e7eb;
@@ -75,22 +85,26 @@
   background: #ffffff;
 }
 
+/* Focus states for inputs */
 .modern-input:focus, .modern-select:focus {
   outline: none;
   border-color: #3b82f6;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
+/* Placeholder text styling */
 .modern-input::placeholder {
   color: #9ca3af;
 }
 
+/* Radio button group layout */
 .radio-group {
   display: flex;
   gap: 1.5rem;
   margin-top: 0.5rem;
 }
 
+/* Individual radio option */
 .radio-option {
   display: flex;
   align-items: center;
@@ -101,14 +115,17 @@
   transition: background-color 0.2s;
 }
 
+/* Radio option hover state */
 .radio-option:hover {
   background-color: #f9fafb;
 }
 
+/* Hide default radio input */
 .radio-option input[type="radio"] {
   display: none;
 }
 
+/* Custom radio button appearance */
 .radio-custom {
   width: 20px;
   height: 20px;
@@ -120,11 +137,13 @@
   transition: all 0.3s ease;
 }
 
+/* Checked radio button state */
 .radio-option input[type="radio"]:checked + .radio-custom {
   border-color: #10b981;
   background-color: #10b981;
 }
 
+/* Radio button check icon */
 .radio-icon {
   color: white;
   font-size: 0.7rem;
@@ -132,15 +151,20 @@
   transition: opacity 0.3s ease;
 }
 
+/* Show check icon when checked */
 .radio-option input[type="radio"]:checked + .radio-custom .radio-icon {
   opacity: 1;
 }
 
-.form-actions {
+/* ===== FORM ACTIONS ===== */
+/* Right-aligned form actions container */
+.form-actions-right {
   display: flex;
-  justify-content: flex-start;
+  justify-content: flex-end;
+  margin-top: 2rem;
 }
 
+/* Submit button styling */
 .submit-btn {
   display: flex;
   align-items: center;
@@ -156,16 +180,19 @@
   transition: all 0.3s ease;
 }
 
+/* Submit button hover effects */
 .submit-btn:hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
+/* Disabled submit button state */
 .submit-btn:disabled {
   opacity: 0.7;
   cursor: not-allowed;
 }
 
+/* Loading spinner animation */
 .spin {
   animation: spin 1s linear infinite;
 }
@@ -175,11 +202,31 @@
   to { transform: rotate(360deg); }
 }
 
-/* Modern Employee List Styles */
+/* ===== UTILITY STYLES ===== */
+/* Age display text */
+.age-display {
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin-top: 0.25rem;
+  display: block;
+}
+
+/* Blood group badge styling */
+.blood-group {
+  padding: 0.2rem 0.6rem;
+  background: #fee2e2;
+  color: #dc2626;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+/* ===== EMPLOYEE LIST STYLES ===== */
 .modern-employee-list {
   padding: 1rem 0;
 }
 
+/* List header section */
 .list-header {
   background: #ffffff;
   border-radius: 12px;
@@ -189,6 +236,7 @@
   border: 1px solid #f0f0f0;
 }
 
+/* Header content layout */
 .header-content {
   display: flex;
   justify-content: space-between;
@@ -197,6 +245,7 @@
   gap: 1rem;
 }
 
+/* Header title styling */
 .header-title h2 {
   color: #1a1d21;
   margin: 0 0 0.25rem 0;
@@ -204,23 +253,27 @@
   font-weight: 600;
 }
 
+/* Employee count text */
 .employee-count {
   color: #6b7280;
   font-size: 0.9rem;
 }
 
+/* Header actions container (search, filter) */
 .header-actions {
   display: flex;
   gap: 1rem;
   align-items: center;
 }
 
+/* Search box styling */
 .search-box {
   position: relative;
   display: flex;
   align-items: center;
 }
 
+/* Search icon positioning */
 .search-icon {
   position: absolute;
   left: 12px;
@@ -228,6 +281,7 @@
   font-size: 0.9rem;
 }
 
+/* Search input field */
 .search-input {
   padding: 0.6rem 1rem 0.6rem 2.5rem;
   border: 1px solid #e5e7eb;
@@ -237,23 +291,27 @@
   transition: all 0.3s ease;
 }
 
+/* Search input focus state */
 .search-input:focus {
   outline: none;
   border-color: #3b82f6;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
+/* Filter group container */
 .filter-group {
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
 
+/* Filter icon styling */
 .filter-icon {
   color: #6b7280;
   font-size: 0.9rem;
 }
 
+/* Filter dropdown styling */
 .filter-select {
   padding: 0.6rem 1rem;
   border: 1px solid #e5e7eb;
@@ -263,12 +321,14 @@
   cursor: pointer;
 }
 
+/* ===== EMPLOYEE GRID LAYOUT ===== */
 .employee-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 1.5rem;
 }
 
+/* Individual employee card */
 .modern-employee-card {
   background: #ffffff;
   border-radius: 16px;
@@ -280,11 +340,13 @@
   overflow: hidden;
 }
 
+/* Card hover effects */
 .modern-employee-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
 }
 
+/* Top colored border for cards */
 .modern-employee-card::before {
   content: '';
   position: absolute;
@@ -295,6 +357,8 @@
   background: linear-gradient(90deg, #3b82f6, #8b5cf6);
 }
 
+/* ===== EMPLOYEE CARD COMPONENTS ===== */
+/* Card header section */
 .card-header {
   display: flex;
   align-items: center;
@@ -302,6 +366,7 @@
   position: relative;
 }
 
+/* Employee avatar circle */
 .employee-avatar {
   width: 50px;
   height: 50px;
@@ -315,6 +380,7 @@
   margin-right: 1rem;
 }
 
+/* Employee name styling */
 .employee-info h3 {
   margin: 0;
   font-size: 1.1rem;
@@ -322,11 +388,13 @@
   color: #1a1d21;
 }
 
+/* Employee ID text */
 .employee-id {
   color: #6b7280;
   font-size: 0.8rem;
 }
 
+/* Status indicator dot */
 .status-indicator {
   position: absolute;
   top: 0;
@@ -340,47 +408,58 @@
   font-size: 0.7rem;
 }
 
+/* Active status styling */
 .status-indicator.active {
   background: #d1fae5;
   color: #065f46;
 }
 
+/* Inactive status styling */
 .status-indicator.inactive {
   background: #fee2e2;
   color: #991b1b;
 }
 
+/* Card body content area */
 .card-body {
-  space-y: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
+/* Individual info item row */
 .info-item {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  margin-bottom: 0.75rem;
   font-size: 0.9rem;
 }
 
+/* Info item icons */
 .info-icon {
   color: #6b7280;
   width: 16px;
+  flex-shrink: 0;
 }
 
+/* Gender info container */
 .gender-info {
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
 
+/* Gender icon base styling */
 .gender-icon {
   font-size: 1rem;
 }
 
+/* Gender-specific icon colors */
 .gender-icon.male { color: #3b82f6; }
 .gender-icon.female { color: #ec4899; }
 .gender-icon.other { color: #8b5cf6; }
 
+/* Status badge styling */
 .status-badge {
   padding: 0.25rem 0.75rem;
   border-radius: 20px;
@@ -388,16 +467,19 @@
   font-weight: 500;
 }
 
+/* Active status badge */
 .status-badge.active {
   background: #d1fae5;
   color: #065f46;
 }
 
+/* Inactive status badge */
 .status-badge.inactive {
   background: #fee2e2;
   color: #991b1b;
 }
 
+/* ===== CARD ACTION BUTTONS ===== */
 .card-actions {
   display: flex;
   gap: 0.5rem;
@@ -406,6 +488,7 @@
   border-top: 1px solid #f3f4f6;
 }
 
+/* Base action button styling */
 .action-btn {
   flex: 1;
   padding: 0.5rem;
@@ -419,6 +502,7 @@
   font-size: 0.9rem;
 }
 
+/* View button styling */
 .view-btn {
   background: #f0f9ff;
   color: #0369a1;
@@ -429,6 +513,7 @@
   transform: translateY(-1px);
 }
 
+/* Edit button styling */
 .edit-btn {
   background: #f0fdf4;
   color: #15803d;
@@ -439,6 +524,7 @@
   transform: translateY(-1px);
 }
 
+/* Delete button styling */
 .delete-btn {
   background: #fef2f2;
   color: #dc2626;
@@ -449,6 +535,7 @@
   transform: translateY(-1px);
 }
 
+/* ===== EMPTY STATE STYLING ===== */
 .empty-state {
   text-align: center;
   padding: 3rem 2rem;
@@ -466,7 +553,13 @@
   color: #374151;
 }
 
-/* Modern Modal Styles */
+.empty-state p {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+/* ===== MODAL STYLES ===== */
+/* Modal overlay background */
 .modern-modal-overlay {
   position: fixed;
   top: 0;
@@ -481,6 +574,7 @@
   padding: 1rem;
 }
 
+/* Base modal container */
 .modern-modal {
   background: white;
   border-radius: 16px;
@@ -490,6 +584,7 @@
   animation: modalSlideIn 0.3s ease;
 }
 
+/* Modal entrance animation */
 @keyframes modalSlideIn {
   from {
     opacity: 0;
@@ -501,6 +596,7 @@
   }
 }
 
+/* Modal header section */
 .modal-header {
   display: flex;
   justify-content: space-between;
@@ -515,6 +611,7 @@
   font-weight: 600;
 }
 
+/* Modal close button */
 .modal-close {
   background: none;
   border: none;
@@ -534,11 +631,13 @@
   background: #f3f4f6;
 }
 
+/* Modal body content */
 .modal-body {
   padding: 1.5rem;
   text-align: center;
 }
 
+/* Modal status icons */
 .modal-icon {
   width: 60px;
   height: 60px;
@@ -550,22 +649,26 @@
   font-size: 1.5rem;
 }
 
+/* Success modal icon */
 .modal-icon.success {
   background: #d1fae5;
   color: #065f46;
 }
 
+/* Error modal icon */
 .modal-icon.error {
   background: #fee2e2;
   color: #dc2626;
 }
 
+/* Modal footer */
 .modal-footer {
   padding: 1rem 1.5rem 1.5rem;
   display: flex;
   justify-content: center;
 }
 
+/* Modal action button */
 .modal-btn {
   padding: 0.75rem 2rem;
   background: #3b82f6;
@@ -581,7 +684,7 @@
   background: #2563eb;
 }
 
-/* Delete Confirmation Modal */
+/* ===== DELETE CONFIRMATION MODAL ===== */
 .delete-confirmation {
   background: white;
   border-radius: 16px;
@@ -595,6 +698,7 @@
   margin-bottom: 1rem;
 }
 
+/* Warning icon styling */
 .warning-icon {
   width: 60px;
   height: 60px;
@@ -613,11 +717,13 @@
   color: #374151;
 }
 
+/* Warning text styling */
 .warning-text {
-  color: #dc2626 !important;
+  color: #dc2626;
   font-size: 0.9rem;
 }
 
+/* Delete action buttons */
 .delete-actions {
   display: flex;
   gap: 1rem;
@@ -634,6 +740,7 @@
   transition: all 0.3s ease;
 }
 
+/* Cancel button styling */
 .btn-cancel {
   background: #f3f4f6;
   color: #374151;
@@ -643,6 +750,7 @@
   background: #e5e7eb;
 }
 
+/* Confirm delete button */
 .btn-confirm {
   background: #dc2626;
   color: white;
@@ -653,12 +761,221 @@
   transform: translateY(-1px);
 }
 
-/* Responsive Design */
+/* ===== EMPLOYEE DETAILS MODAL ===== */
+.employee-details-modal {
+  background: white;
+  border-radius: 20px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: modalSlideIn 0.3s ease;
+}
+
+.details-content {
+  padding: 2rem;
+}
+
+/* Details header with avatar */
+.details-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 2px solid #f1f3f4;
+}
+
+/* Large employee avatar */
+.details-avatar {
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 2rem;
+  margin-right: 1.5rem;
+}
+
+/* Employee name and title */
+.details-title h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1a1d21;
+}
+
+.details-title .employee-id {
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+/* Status badge in details */
+.details-status {
+  padding: 0.3rem 1rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  margin-top: 0.5rem;
+  display: inline-block;
+}
+
+.details-status.active {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.details-status.inactive {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+/* Details information grid */
+.details-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+/* Individual detail item */
+.detail-item {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Full width detail item */
+.detail-item.full-width {
+  grid-column: 1 / -1;
+}
+
+.detail-item label {
+  font-weight: 600;
+  color: #374151;
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+
+.detail-item p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.95rem;
+}
+
+/* Special detail items with icons */
+.gender-detail, .blood-group-detail, .department-detail {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.blood-group-detail {
+  color: #dc2626;
+  font-weight: 500;
+}
+
+.department-detail {
+  color: #1d4ed8;
+  font-weight: 500;
+}
+
+/* Edit profile button */
+.edit-profile-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin: 0 auto;
+}
+
+.edit-profile-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+/* ===== ENHANCED MODAL HEADER STYLES ===== */
+.employee-details-modal .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid #e5e7eb;
+  background: #fafbfc;
+  border-radius: 20px 20px 0 0;
+}
+
+.employee-details-modal .modal-header h2 {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: #1a1d21;
+}
+
+.employee-details-modal .modal-close {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: #6b7280;
+  padding: 0.5rem;
+  border-radius: 6px;
+  transition: background-color 0.3s;
+}
+
+.employee-details-modal .modal-close:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.employee-details-modal .modal-footer {
+  padding: 1.5rem 2rem;
+  border-top: 1px solid #e5e7eb;
+  background: #fafbfc;
+  border-radius: 0 0 20px 20px;
+  display: flex;
+  justify-content: center;
+}
+
+/* ===== SCROLLBAR STYLING ===== */
+.employee-details-modal {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e0 #f7fafc;
+}
+
+.employee-details-modal::-webkit-scrollbar {
+  width: 6px;
+}
+
+.employee-details-modal::-webkit-scrollbar-track {
+  background: #f7fafc;
+  border-radius: 0 20px 20px 0;
+}
+
+.employee-details-modal::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 3px;
+}
+
+.employee-details-modal::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0;
+}
+
+/* ===== RESPONSIVE DESIGN ===== */
 @media (max-width: 768px) {
+  /* Mobile form layout */
   .form-grid {
     grid-template-columns: 1fr;
   }
   
+  /* Mobile header layout */
   .header-content {
     flex-direction: column;
     align-items: stretch;
@@ -666,17 +983,57 @@
   
   .header-actions {
     flex-direction: column;
+    gap: 1rem;
   }
   
   .search-input {
     width: 100%;
   }
   
+  /* Single column employee grid */
   .employee-grid {
     grid-template-columns: 1fr;
   }
   
+  /* Stacked delete actions */
   .delete-actions {
     flex-direction: column;
+  }
+  
+  /* Mobile modal adjustments */
+  .employee-details-modal {
+    width: 95%;
+    margin: 1rem;
+  }
+  
+  /* Centered details header */
+  .details-header {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .details-avatar {
+    margin-right: 0;
+    margin-bottom: 1rem;
+  }
+  
+  /* Single column details grid */
+  .details-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .detail-item.full-width {
+    grid-column: 1;
+  }
+  
+  /* Centered form actions */
+  .form-actions-right {
+    justify-content: center;
+  }
+  
+  .submit-btn {
+    width: 100%;
+    justify-content: center;
   }
 }
