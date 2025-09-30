@@ -1,21 +1,29 @@
 import React, { useState } from "react";
+import Dashboard from "./pages/Dashboard";
 import EmployeePage from "./pages/EmployeePage";
 import DepartmentPage from "./pages/DepartmentPage";
 import "./App.css";
 
 function App() {
-  const [view, setView] = useState("employees");
+  const [currentView, setCurrentView] = useState("dashboard");
 
+  // If you want to use the dashboard as main interface
+  if (currentView === "dashboard") {
+    return <Dashboard />;
+  }
+
+  // If you want to keep your original layout with navigation
   return (
     <div className="container">
       <h1>Office Management System</h1>
       <div className="nav">
-        <button onClick={() => setView("employees")}>Employees</button>
-        <button onClick={() => setView("departments")}>Departments</button>
+        <button onClick={() => setCurrentView("dashboard")}>Dashboard</button>
+        <button onClick={() => setCurrentView("employees")}>Employees</button>
+        <button onClick={() => setCurrentView("departments")}>Departments</button>
       </div>
 
-      {view === "employees" && <EmployeePage />}
-      {view === "departments" && <DepartmentPage />}
+      {currentView === "employees" && <EmployeePage />}
+      {currentView === "departments" && <DepartmentPage />}
     </div>
   );
 }

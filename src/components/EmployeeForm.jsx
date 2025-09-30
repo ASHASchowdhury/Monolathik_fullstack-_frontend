@@ -31,27 +31,42 @@ function EmployeeForm({ onEmployeeAdded, selectedEmployee, onUpdateComplete }) {
   const [modalMessage, setModalMessage] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [departmentsLoading, setDepartmentsLoading] = useState(true);
 
-  // Blood group options
   const bloodGroups = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
 
-  // Load departments
+  // Load departments safely
   useEffect(() => {
+    console.log("Fetching departments...");
     axios
       .get("http://10.0.6.1:8080/departments")
-      .then((res) => setDepartments(res.data))
-      .catch((err) => console.error(err));
+      .then((res) => {
+        console.log("Departments loaded:", res.data);
+        setDepartments(res.data || []);
+        setDepartmentsLoading(false);
+      })
+      .catch((err) => {
+        console.error("Error loading departments:", err);
+        setDepartments([]);
+        setDepartmentsLoading(false);
+      });
   }, []);
 
-  // Load selected employee for update
+  // Load selected employee safely
   useEffect(() => {
-    if (selectedEmployee) {
-      // Format date for input field
-      const formattedEmployee = {
-        ...selectedEmployee,
-        dateOfBirth: selectedEmployee.dateOfBirth ? selectedEmployee.dateOfBirth.split('T')[0] : ""
-      };
-      setEmployee(formattedEmployee);
+    console.log("Selected employee changed:", selectedEmployee);
+    if (selectedEmployee && selectedEmployee.id) {
+      try {
+        const formattedEmployee = {
+          ...selectedEmployee,
+          dateOfBirth: selectedEmployee.dateOfBirth ? selectedEmployee.dateOfBirth.split('T')[0] : "",
+          departmentDTO: selectedEmployee.departmentDTO || { id: "" }
+        };
+        setEmployee(formattedEmployee);
+      } catch (error) {
+        console.error("Error formatting employee:", error);
+        resetForm();
+      }
     } else {
       resetForm();
     }
@@ -73,31 +88,51 @@ function EmployeeForm({ onEmployeeAdded, selectedEmployee, onUpdateComplete }) {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setEmployee({ ...employee, [name]: value });
+    setEmployee(prev => ({ 
+      ...prev, 
+      [name]: value 
+    }));
+  };
+
+  const handleDepartmentChange = (e) => {
+    const value = e.target.value;
+    setEmployee(prev => ({
+      ...prev,
+      departmentDTO: { id: value ? Number(value) : "" }
+    }));
+  };
+
+  const handleStatusChange = (isActive) => {
+    setEmployee(prev => ({ ...prev, active: isActive }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log("Submitting employee:", employee);
     setIsLoading(true);
     
     try {
       if (employee.id) {
-        // Update
+        // Update existing employee
         await axios.put(`http://10.0.6.1:8080/employees/${employee.id}`, employee);
         setModalMessage("Employee updated successfully!");
         setIsModalOpen(true);
-        onUpdateComplete();
+        if (onUpdateComplete) {
+          onUpdateComplete();
+        }
       } else {
-        // Add
+        // Add new employee
         await axios.post("http://10.0.6.1:8080/employees", employee);
         setModalMessage("Employee added successfully!");
         setIsModalOpen(true);
-        onEmployeeAdded();
+        if (onEmployeeAdded) {
+          onEmployeeAdded();
+        }
       }
       resetForm();
     } catch (err) {
-      console.error(err);
-      setModalMessage("Error saving employee");
+      console.error("Error saving employee:", err);
+      setModalMessage("Error saving employee: " + (err.response?.data?.message || err.message));
       setIsModalOpen(true);
     } finally {
       setIsLoading(false);
@@ -106,15 +141,19 @@ function EmployeeForm({ onEmployeeAdded, selectedEmployee, onUpdateComplete }) {
 
   const calculateAge = (dateString) => {
     if (!dateString) return '';
-    const today = new Date();
-    const birthDate = new Date(dateString);
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-    
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
+    try {
+      const today = new Date();
+      const birthDate = new Date(dateString);
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      return age;
+    } catch (error) {
+      return '';
     }
-    return age;
   };
 
   return (
@@ -128,6 +167,7 @@ function EmployeeForm({ onEmployeeAdded, selectedEmployee, onUpdateComplete }) {
         </div>
 
         <div className="form-grid">
+          {/* Full Name */}
           <div className="form-group full-width">
             <label className="input-label">
               <FaUser className="input-icon" />
@@ -136,7 +176,7 @@ function EmployeeForm({ onEmployeeAdded, selectedEmployee, onUpdateComplete }) {
             <input
               type="text"
               name="name"
-              value={employee.name}
+              value={employee.name || ""}
               onChange={handleChange}
               className="modern-input"
               placeholder="Enter employee name"
@@ -144,6 +184,7 @@ function EmployeeForm({ onEmployeeAdded, selectedEmployee, onUpdateComplete }) {
             />
           </div>
 
+          {/* Phone Number */}
           <div className="form-group">
             <label className="input-label">
               <FaPhone className="input-icon" />
@@ -152,7 +193,7 @@ function EmployeeForm({ onEmployeeAdded, selectedEmployee, onUpdateComplete }) {
             <input
               type="text"
               name="phoneNumber"
-              value={employee.phoneNumber}
+              value={employee.phoneNumber || ""}
               onChange={handleChange}
               className="modern-input"
               placeholder="Enter phone number"
@@ -160,6 +201,7 @@ function EmployeeForm({ onEmployeeAdded, selectedEmployee, onUpdateComplete }) {
             />
           </div>
 
+          {/* Email */}
           <div className="form-group">
             <label className="input-label">
               <FaEnvelope className="input-icon" />
@@ -168,7 +210,7 @@ function EmployeeForm({ onEmployeeAdded, selectedEmployee, onUpdateComplete }) {
             <input
               type="email"
               name="email"
-              value={employee.email}
+              value={employee.email || ""}
               onChange={handleChange}
               className="modern-input"
               placeholder="Enter email address"
@@ -176,6 +218,7 @@ function EmployeeForm({ onEmployeeAdded, selectedEmployee, onUpdateComplete }) {
             />
           </div>
 
+          {/* Gender */}
           <div className="form-group">
             <label className="input-label">
               <FaVenusMars className="input-icon" />
@@ -183,7 +226,7 @@ function EmployeeForm({ onEmployeeAdded, selectedEmployee, onUpdateComplete }) {
             </label>
             <select 
               name="gender" 
-              value={employee.gender} 
+              value={employee.gender || ""} 
               onChange={handleChange} 
               className="modern-select"
               required
@@ -195,6 +238,7 @@ function EmployeeForm({ onEmployeeAdded, selectedEmployee, onUpdateComplete }) {
             </select>
           </div>
 
+          {/* Blood Group */}
           <div className="form-group">
             <label className="input-label">
               <FaTint className="input-icon" />
@@ -202,7 +246,7 @@ function EmployeeForm({ onEmployeeAdded, selectedEmployee, onUpdateComplete }) {
             </label>
             <select 
               name="bloodGroup" 
-              value={employee.bloodGroup} 
+              value={employee.bloodGroup || ""} 
               onChange={handleChange} 
               className="modern-select"
             >
@@ -213,6 +257,7 @@ function EmployeeForm({ onEmployeeAdded, selectedEmployee, onUpdateComplete }) {
             </select>
           </div>
 
+          {/* Date of Birth */}
           <div className="form-group">
             <label className="input-label">
               <FaCalendarAlt className="input-icon" />
@@ -221,7 +266,7 @@ function EmployeeForm({ onEmployeeAdded, selectedEmployee, onUpdateComplete }) {
             <input
               type="date"
               name="dateOfBirth"
-              value={employee.dateOfBirth}
+              value={employee.dateOfBirth || ""}
               onChange={handleChange}
               className="modern-input"
               max={new Date().toISOString().split('T')[0]}
@@ -231,32 +276,34 @@ function EmployeeForm({ onEmployeeAdded, selectedEmployee, onUpdateComplete }) {
             )}
           </div>
 
+          {/* Department */}
           <div className="form-group">
             <label className="input-label">
               <FaBuilding className="input-icon" />
               Department
             </label>
-            <select
-              name="departmentId"
-              value={employee.departmentDTO.id || ""}
-              onChange={(e) =>
-                setEmployee({
-                  ...employee,
-                  departmentDTO: { id: Number(e.target.value) },
-                })
-              }
-              className="modern-select"
-              required
-            >
-              <option value="">Select Department</option>
-              {departments.map((dept) => (
-                <option key={dept.id} value={dept.id}>
-                  {dept.name}
-                </option>
-              ))}
-            </select>
+            {departmentsLoading ? (
+              <div className="modern-input" style={{ padding: '0.75rem 1rem', color: '#6b7280' }}>
+                Loading departments...
+              </div>
+            ) : (
+              <select
+                value={employee.departmentDTO?.id || ""}
+                onChange={handleDepartmentChange}
+                className="modern-select"
+                required
+              >
+                <option value="">Select Department</option>
+                {departments.map((dept) => (
+                  <option key={dept.id} value={dept.id}>
+                    {dept.name}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
+          {/* Status */}
           <div className="form-group full-width">
             <label className="input-label">Status</label>
             <div className="radio-group">
@@ -265,7 +312,7 @@ function EmployeeForm({ onEmployeeAdded, selectedEmployee, onUpdateComplete }) {
                   type="radio"
                   name="active"
                   checked={employee.active === true}
-                  onChange={() => setEmployee({ ...employee, active: true })}
+                  onChange={() => handleStatusChange(true)}
                 />
                 <span className="radio-custom">
                   <FaCheck className="radio-icon" />
@@ -277,7 +324,7 @@ function EmployeeForm({ onEmployeeAdded, selectedEmployee, onUpdateComplete }) {
                   type="radio"
                   name="active"
                   checked={employee.active === false}
-                  onChange={() => setEmployee({ ...employee, active: false })}
+                  onChange={() => handleStatusChange(false)}
                 />
                 <span className="radio-custom">
                   <FaTimes className="radio-icon" />
@@ -288,6 +335,7 @@ function EmployeeForm({ onEmployeeAdded, selectedEmployee, onUpdateComplete }) {
           </div>
         </div>
 
+        {/* Submit Button */}
         <div className="form-actions-right">
           <button
             type="submit"
@@ -300,7 +348,7 @@ function EmployeeForm({ onEmployeeAdded, selectedEmployee, onUpdateComplete }) {
         </div>
       </form>
 
-      {/* Modern Modal */}
+      {/* Success/Error Modal */}
       {isModalOpen && (
         <div className="modern-modal-overlay">
           <div className="modern-modal">
