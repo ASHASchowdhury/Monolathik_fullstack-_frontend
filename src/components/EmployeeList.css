@@ -255,7 +255,7 @@
 
 /* Employee count text */
 .employee-count {
-  color: #6b7280;
+  color: #ffffff;
   font-size: 0.9rem;
 }
 
@@ -307,7 +307,7 @@
 
 /* Filter icon styling */
 .filter-icon {
-  color: #6b7280;
+  color: #ffffff;
   font-size: 0.9rem;
 }
 
@@ -613,22 +613,19 @@
 
 /* Modal close button */
 .modal-close {
-  background: none;
+  background: transparent;
   border: none;
-  font-size: 1.5rem;
+  font-size: 20px;
   cursor: pointer;
-  color: #6b7280;
-  padding: 0;
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 6px;
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  color: #333; /* Change if background dark/light */
+  z-index: 999;
 }
 
 .modal-close:hover {
-  background: #f3f4f6;
+  color: red;
 }
 
 /* Modal body content */

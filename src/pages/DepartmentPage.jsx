@@ -1,52 +1,58 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import DepartmentList from "../components/DepartmentList";
-import DepartmentForm from "../components/DepartmentFrom"; // Fixed typo: DepartmentFrom → DepartmentForm
+import EmployeeForm from "../components/EmployeeForm";
+import EmployeeList from "../components/EmployeeList";
 
-function DepartmentPage() {
-  const [departments, setDepartments] = useState([]);
-  const [editingDepartment, setEditingDepartment] = useState(null);
+function EmployeePage() {
+  const [employees, setEmployees] = useState([]);
+  const [selectedEmployee, setSelectedEmployee] = useState(null);
 
-  const fetchDepartments = async () => {
+  const fetchEmployees = async () => {
     try {
-      const res = await axios.get("http://10.0.6.1:8080/departments");
-      setDepartments(res.data);
+      const res = await axios.get("http://10.0.6.1:8080/employees");
+      setEmployees(res.data);
     } catch (err) {
       console.error(err);
     }
   };
 
   useEffect(() => {
-    fetchDepartments();
+    fetchEmployees();
   }, []);
 
-  const handleDepartmentAdded = () => {
-    setEditingDepartment(null);
-    fetchDepartments();
+  const handleEditEmployee = (employee) => {
+    setSelectedEmployee(employee);
   };
 
-  const handleEditDepartment = (dept) => {
-    setEditingDepartment(dept);
+  const handleUpdateComplete = () => {
+    fetchEmployees();
+    setSelectedEmployee(null); // reset form
   };
 
-  const handleViewDepartment = (dept) => {
-    alert(`Department Details:\nID: ${dept.id}\nName: ${dept.name}\nDescription: ${dept.description}`);
-  };
+  const handleViewEmployee = (employee) =>{
+    console.log("Viewing employee :" ,employee);
+
+    setSelectedEmployee(employee)
+  }
 
   return (
     <div>
-      <DepartmentForm
-        onDepartmentAdded={handleDepartmentAdded}
-        editingDepartment={editingDepartment}
+      <h1>Employee Management</h1>
+
+      <EmployeeForm
+        onEmployeeAdded={fetchEmployees}
+        selectedEmployee={selectedEmployee}
+        onUpdateComplete={handleUpdateComplete}
       />
-      <DepartmentList
-        departments={departments}
-        onDepartmentDeleted={fetchDepartments}
-        onEditDepartment={handleEditDepartment}
-        onViewDepartment={handleViewDepartment}
+
+      <EmployeeList
+        employees={employees}
+        onEmployeeDeleted={fetchEmployees}
+        onEditEmployee={handleEditEmployee}
+        onViewEmployee={handleViewEmployee}
       />
     </div>
   );
 }
 
-export default DepartmentPage;
+export default EmployeePage;
