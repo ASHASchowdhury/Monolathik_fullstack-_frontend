@@ -268,32 +268,44 @@ function Dashboard() {
           </div>
         );
 
-      case "departments":
-        return (
-          <div className="tab-content">
-            <div className="content-header">
-              <h2>Department Management</h2>
-              <button 
-                className="add-btn"
-                onClick={() => setEditingDepartment({})}
-              >
-                <FaUserPlus /> Add Department
-              </button>
-            </div>
-            {editingDepartment !== null ? (
-              <DepartmentForm
-                onDepartmentAdded={handleDepartmentAdded}
-                editingDepartment={editingDepartment}
-              />
-            ) : (
-              <DepartmentList
-                departments={departments}
-                onDepartmentDeleted={handleDepartmentDeleted}
-                onEditDepartment={handleEditDepartment}
-              />
-            )}
-          </div>
-        );
+     // In your Dashboard component, update the departments case:
+case "departments":
+  return (
+    <div className="tab-content">
+      <div className="content-header">
+        <h2>Department Management</h2>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <button 
+            className="add-btn"
+            onClick={() => {
+              console.log("➕ Add Department clicked ");
+              setEditingDepartment(null);
+            }}
+          >
+            <FaUserPlus /> Add Department
+          </button>
+          <span style={{ fontSize: '12px', color: '#666', fontFamily: 'monospace' }}>
+        
+          </span>
+        </div>
+      </div>
+      
+      {/* Always show DepartmentForm, but pass editingDepartment as prop */}
+      <DepartmentForm
+        onDepartmentAdded={handleDepartmentAdded}
+        editingDepartment={editingDepartment} // This will be null for ADD mode
+      />
+      
+      {/* Only show DepartmentList when NOT editing */}
+      {!editingDepartment && (
+        <DepartmentList
+          departments={departments}
+          onDepartmentDeleted={handleDepartmentDeleted}
+          onEditDepartment={handleEditDepartment}
+        />
+      )}
+    </div>
+  );
 
       case "active-employees":
         return (
