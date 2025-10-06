@@ -119,7 +119,7 @@ function DepartmentForm({ onDepartmentAdded, editingDepartment }) {
             {editingDepartment ? (
               <>📝 Edit Department</>
             ) : (
-              <>➕ Add New Department</>
+              <>Add New Department</>
             )}
           </h2>
           <div className="form-icon">

@@ -392,7 +392,7 @@ case "departments":
             onClick={() => setActiveTab("chat")}
           >
             <FaComments />
-            <span>Team Chat</span>
+            <span>EMS Assistant</span>
           </button>
 
           <div className="nav-divider"></div>

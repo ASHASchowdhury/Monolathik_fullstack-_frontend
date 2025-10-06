@@ -1,31 +1,41 @@
-import React, { useState } from "react";
-import Dashboard from "./pages/Dashboard";
-import EmployeePage from "./pages/EmployeePage";
-import DepartmentPage from "./pages/DepartmentPage";
-import "./App.css";
+import React, { useState, useEffect } from 'react';
+import Dashboard from './pages/Dashboard';
+import Login from './components/Login';
+import './App.css';
 
 function App() {
-  const [currentView, setCurrentView] = useState("dashboard");
+  const [user, setUser] = useState(null);
+  const [showLogin, setShowLogin] = useState(true); // true=login, false=register
 
-  // If you want to use the dashboard as main interface
-  if (currentView === "dashboard") {
-    return <Dashboard />;
+  useEffect(() => {
+    // Check if user is already logged in
+    const savedUser = localStorage.getItem('user');
+    if (savedUser) {
+      setUser(JSON.parse(savedUser));
+    }
+  }, []);
+
+  const handleLogin = (userData) => {
+    setUser(userData);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    setUser(null);
+  };
+
+  if (!user) {
+    return (
+      <Login 
+        onLogin={handleLogin} 
+        isLogin={showLogin}
+        onToggleMode={() => setShowLogin(!showLogin)}
+      />
+    );
   }
 
-  // If you want to keep your original layout with navigation
-  return (
-    <div className="container">
-      <h1>Office Management System</h1>
-      <div className="nav">
-        <button onClick={() => setCurrentView("dashboard")}>Dashboard</button>
-        <button onClick={() => setCurrentView("employees")}>Employees</button>
-        <button onClick={() => setCurrentView("departments")}>Departments</button>
-      </div>
-
-      {currentView === "employees" && <EmployeePage />}
-      {currentView === "departments" && <DepartmentPage />}
-    </div>
-  );
+  return <Dashboard user={user} onLogout={handleLogout} />;
 }
 
 export default App;
