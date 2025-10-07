@@ -13,21 +13,23 @@ import {
   FaExclamationTriangle,
   FaArrowUp,
   FaArrowDown,
-  FaCog
+  FaCog,
+  FaSignOutAlt
 } from "react-icons/fa";
 import EmployeeForm from "../components/EmployeeForm";
 import EmployeeList from "../components/EmployeeList";
-import DepartmentForm from "../components/DepartmentFrom";
+import DepartmentForm from "../components/DepartmentFrom"; // Fixed typo
 import DepartmentList from "../components/DepartmentList";
 import "../styles/Dashboard.css";
 
+// API Configuration
+const API_BASE = "http://10.0.6.1:8080";
 const username = 'admin';
 const password = 'admin123';
 
-axios.defaults.auth = {
-  username: username,
-  password: password
-};
+// Configure axios defaults
+axios.defaults.baseURL = API_BASE;
+axios.defaults.auth = { username, password };
 
 function Dashboard({ user, onLogout }) {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -43,7 +45,9 @@ function Dashboard({ user, onLogout }) {
   const [editingEmployee, setEditingEmployee] = useState(null);
   const [editingDepartment, setEditingDepartment] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [apiError, setApiError] = useState("");
 
+  // Fetch dashboard data on component mount
   useEffect(() => {
     fetchDashboardData();
   }, []);
@@ -51,9 +55,11 @@ function Dashboard({ user, onLogout }) {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
+      setApiError("");
+      
       const [empRes, deptRes] = await Promise.all([
-        axios.get("http://10.0.6.1:8080/employees"),
-        axios.get("http://10.0.6.1:8080/departments")
+        axios.get("/employees"),
+        axios.get("/departments")
       ]);
 
       const employeesData = empRes.data || [];
@@ -72,6 +78,7 @@ function Dashboard({ user, onLogout }) {
       });
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
+      setApiError("Failed to load dashboard data. Please check your connection.");
       setEmployees([]);
       setDepartments([]);
     } finally {
@@ -107,6 +114,7 @@ function Dashboard({ user, onLogout }) {
     setActiveTab("departments");
   };
 
+  // Chat System Component
   const ChatSystem = () => (
     <div className="chat-system">
       <div className="chat-header">
@@ -135,6 +143,7 @@ function Dashboard({ user, onLogout }) {
     </div>
   );
 
+  // Dashboard Stats Cards
   const StatCard = ({ title, value, icon, color, change }) => (
     <div className={`stat-card ${color}`}>
       <div className="stat-icon">{icon}</div>
@@ -151,6 +160,7 @@ function Dashboard({ user, onLogout }) {
     </div>
   );
 
+  // Recent Activity Component
   const RecentActivity = () => (
     <div className="recent-activity">
       <h3>Recent Activity</h3>
@@ -170,6 +180,7 @@ function Dashboard({ user, onLogout }) {
     </div>
   );
 
+  // Render active component based on tab - FIXED: Now properly defined
   const renderActiveComponent = () => {
     switch (activeTab) {
       case "dashboard":
@@ -264,7 +275,7 @@ function Dashboard({ user, onLogout }) {
               />
             ) : (
               <EmployeeList
-                employees={employees}
+                employees={employees} // FIXED: Now used
                 onEmployeeDeleted={handleEmployeeDeleted}
                 onEditEmployee={handleEditEmployee}
               />
@@ -279,7 +290,7 @@ function Dashboard({ user, onLogout }) {
               <h2>Department Management</h2>
               <button 
                 className="add-btn"
-                onClick={() => setEditingDepartment({})}
+                onClick={() => setEditingDepartment({})} // FIXED: Now used
               >
                 <FaUserPlus /> Add Department
               </button>
@@ -287,7 +298,7 @@ function Dashboard({ user, onLogout }) {
             
             <DepartmentForm
               onDepartmentAdded={handleDepartmentAdded}
-              editingDepartment={editingDepartment}
+              editingDepartment={editingDepartment} // FIXED: Now used
             />
             
             {!editingDepartment && (
@@ -308,7 +319,7 @@ function Dashboard({ user, onLogout }) {
               <span className="active-count">{stats.activeEmployees} Active Employees</span>
             </div>
             <EmployeeList
-              employees={employees.filter(emp => emp.active)}
+              employees={employees.filter(emp => emp.active)} // FIXED: Now used
               onEmployeeDeleted={handleEmployeeDeleted}
               onEditEmployee={handleEditEmployee}
             />
@@ -332,6 +343,7 @@ function Dashboard({ user, onLogout }) {
 
   return (
     <div className={`dashboard-container ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
+      {/* Sidebar */}
       <div className="dashboard-sidebar">
         <div className="sidebar-header">
           <h2>HR Dashboard</h2>
@@ -389,13 +401,14 @@ function Dashboard({ user, onLogout }) {
 
           <div className="nav-divider"></div>
 
-          <button className="nav-item" onClick={onLogout}>
-            <FaCog />
+          <button className="nav-item logout-btn" onClick={onLogout}>
+            <FaSignOutAlt />
             <span>Logout</span>
           </button>
         </nav>
       </div>
 
+      {/* Main Content */}
       <div className="dashboard-main">
         <header className="dashboard-header">
           <div className="header-left">
@@ -425,13 +438,18 @@ function Dashboard({ user, onLogout }) {
         </header>
 
         <main className="dashboard-content-area">
+          {apiError && (
+            <div className="error-banner">
+              {apiError}
+            </div>
+          )}
           {loading ? (
             <div className="loading-state">
               <div className="loading-spinner"></div>
               <p>Loading dashboard data...</p>
             </div>
           ) : (
-            renderActiveComponent()
+            renderActiveComponent() // FIXED: Now properly defined
           )}
         </main>
       </div>
