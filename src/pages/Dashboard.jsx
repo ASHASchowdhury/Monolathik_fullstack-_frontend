@@ -21,7 +21,15 @@ import DepartmentForm from "../components/DepartmentFrom";
 import DepartmentList from "../components/DepartmentList";
 import "../styles/Dashboard.css";
 
-function Dashboard() {
+const username = 'admin';
+const password = 'admin123';
+
+axios.defaults.auth = {
+  username: username,
+  password: password
+};
+
+function Dashboard({ user, onLogout }) {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [stats, setStats] = useState({
@@ -99,7 +107,6 @@ function Dashboard() {
     setActiveTab("departments");
   };
 
-  // Chat System Component
   const ChatSystem = () => (
     <div className="chat-system">
       <div className="chat-header">
@@ -128,7 +135,6 @@ function Dashboard() {
     </div>
   );
 
-  // Dashboard Stats Cards
   const StatCard = ({ title, value, icon, color, change }) => (
     <div className={`stat-card ${color}`}>
       <div className="stat-icon">{icon}</div>
@@ -145,7 +151,6 @@ function Dashboard() {
     </div>
   );
 
-  // Recent Activity Component
   const RecentActivity = () => (
     <div className="recent-activity">
       <h3>Recent Activity</h3>
@@ -165,7 +170,6 @@ function Dashboard() {
     </div>
   );
 
-  // Render active component based on tab
   const renderActiveComponent = () => {
     switch (activeTab) {
       case "dashboard":
@@ -268,44 +272,33 @@ function Dashboard() {
           </div>
         );
 
-     // In your Dashboard component, update the departments case:
-case "departments":
-  return (
-    <div className="tab-content">
-      <div className="content-header">
-        <h2>Department Management</h2>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-          <button 
-            className="add-btn"
-            onClick={() => {
-              console.log("➕ Add Department clicked ");
-              setEditingDepartment(null);
-            }}
-          >
-            <FaUserPlus /> Add Department
-          </button>
-          <span style={{ fontSize: '12px', color: '#666', fontFamily: 'monospace' }}>
-        
-          </span>
-        </div>
-      </div>
-      
-      {/* Always show DepartmentForm, but pass editingDepartment as prop */}
-      <DepartmentForm
-        onDepartmentAdded={handleDepartmentAdded}
-        editingDepartment={editingDepartment} // This will be null for ADD mode
-      />
-      
-      {/* Only show DepartmentList when NOT editing */}
-      {!editingDepartment && (
-        <DepartmentList
-          departments={departments}
-          onDepartmentDeleted={handleDepartmentDeleted}
-          onEditDepartment={handleEditDepartment}
-        />
-      )}
-    </div>
-  );
+      case "departments":
+        return (
+          <div className="tab-content">
+            <div className="content-header">
+              <h2>Department Management</h2>
+              <button 
+                className="add-btn"
+                onClick={() => setEditingDepartment({})}
+              >
+                <FaUserPlus /> Add Department
+              </button>
+            </div>
+            
+            <DepartmentForm
+              onDepartmentAdded={handleDepartmentAdded}
+              editingDepartment={editingDepartment}
+            />
+            
+            {!editingDepartment && (
+              <DepartmentList
+                departments={departments}
+                onDepartmentDeleted={handleDepartmentDeleted}
+                onEditDepartment={handleEditDepartment}
+              />
+            )}
+          </div>
+        );
 
       case "active-employees":
         return (
@@ -339,7 +332,6 @@ case "departments":
 
   return (
     <div className={`dashboard-container ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
-      {/* Sidebar */}
       <div className="dashboard-sidebar">
         <div className="sidebar-header">
           <h2>HR Dashboard</h2>
@@ -392,19 +384,18 @@ case "departments":
             onClick={() => setActiveTab("chat")}
           >
             <FaComments />
-            <span>EMS Assistant</span>
+            <span>Team Chat</span>
           </button>
 
           <div className="nav-divider"></div>
 
-          <button className="nav-item">
+          <button className="nav-item" onClick={onLogout}>
             <FaCog />
-            <span>Settings</span>
+            <span>Logout</span>
           </button>
         </nav>
       </div>
 
-      {/* Main Content */}
       <div className="dashboard-main">
         <header className="dashboard-header">
           <div className="header-left">
@@ -428,7 +419,7 @@ case "departments":
               <div className="user-avatar">
                 <FaUsers />
               </div>
-              <span>Admin</span>
+              <span>Welcome, {user?.name || user?.username}</span>
             </div>
           </div>
         </header>

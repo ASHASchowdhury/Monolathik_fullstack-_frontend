@@ -14,6 +14,9 @@ import {
   FaCalendarAlt
 } from "react-icons/fa";
 
+const username = 'admin';
+const password = 'admin123';
+
 function EmployeeForm({ onEmployeeAdded, selectedEmployee, onUpdateComplete }) {
   const [employee, setEmployee] = useState({
     id: null,
@@ -35,13 +38,12 @@ function EmployeeForm({ onEmployeeAdded, selectedEmployee, onUpdateComplete }) {
 
   const bloodGroups = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
 
-  // Load departments safely
   useEffect(() => {
-    console.log("Fetching departments...");
     axios
-      .get("http://10.0.6.1:8080/departments")
+      .get("http://10.0.6.1:8080/departments", {
+        auth: { username, password }
+      })
       .then((res) => {
-        console.log("Departments loaded:", res.data);
         setDepartments(res.data || []);
         setDepartmentsLoading(false);
       })
@@ -52,9 +54,7 @@ function EmployeeForm({ onEmployeeAdded, selectedEmployee, onUpdateComplete }) {
       });
   }, []);
 
-  // Load selected employee safely
   useEffect(() => {
-    console.log("Selected employee changed:", selectedEmployee);
     if (selectedEmployee && selectedEmployee.id) {
       try {
         const formattedEmployee = {
@@ -108,21 +108,22 @@ function EmployeeForm({ onEmployeeAdded, selectedEmployee, onUpdateComplete }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Submitting employee:", employee);
     setIsLoading(true);
     
     try {
       if (employee.id) {
-        // Update existing employee
-        await axios.put(`http://10.0.6.1:8080/employees/${employee.id}`, employee);
+        await axios.put(`http://10.0.6.1:8080/employees/${employee.id}`, employee, {
+          auth: { username, password }
+        });
         setModalMessage("Employee updated successfully!");
         setIsModalOpen(true);
         if (onUpdateComplete) {
           onUpdateComplete();
         }
       } else {
-        // Add new employee
-        await axios.post("http://10.0.6.1:8080/employees", employee);
+        await axios.post("http://10.0.6.1:8080/employees", employee, {
+          auth: { username, password }
+        });
         setModalMessage("Employee added successfully!");
         setIsModalOpen(true);
         if (onEmployeeAdded) {
@@ -151,7 +152,7 @@ function EmployeeForm({ onEmployeeAdded, selectedEmployee, onUpdateComplete }) {
         age--;
       }
       return age;
-    } catch (error) {
+    } catch {
       return '';
     }
   };
@@ -167,7 +168,6 @@ function EmployeeForm({ onEmployeeAdded, selectedEmployee, onUpdateComplete }) {
         </div>
 
         <div className="form-grid">
-          {/* Full Name */}
           <div className="form-group full-width">
             <label className="input-label">
               <FaUser className="input-icon" />
@@ -184,7 +184,6 @@ function EmployeeForm({ onEmployeeAdded, selectedEmployee, onUpdateComplete }) {
             />
           </div>
 
-          {/* Phone Number */}
           <div className="form-group">
             <label className="input-label">
               <FaPhone className="input-icon" />
@@ -201,7 +200,6 @@ function EmployeeForm({ onEmployeeAdded, selectedEmployee, onUpdateComplete }) {
             />
           </div>
 
-          {/* Email */}
           <div className="form-group">
             <label className="input-label">
               <FaEnvelope className="input-icon" />
@@ -218,7 +216,6 @@ function EmployeeForm({ onEmployeeAdded, selectedEmployee, onUpdateComplete }) {
             />
           </div>
 
-          {/* Gender */}
           <div className="form-group">
             <label className="input-label">
               <FaVenusMars className="input-icon" />
@@ -238,7 +235,6 @@ function EmployeeForm({ onEmployeeAdded, selectedEmployee, onUpdateComplete }) {
             </select>
           </div>
 
-          {/* Blood Group */}
           <div className="form-group">
             <label className="input-label">
               <FaTint className="input-icon" />
@@ -257,7 +253,6 @@ function EmployeeForm({ onEmployeeAdded, selectedEmployee, onUpdateComplete }) {
             </select>
           </div>
 
-          {/* Date of Birth */}
           <div className="form-group">
             <label className="input-label">
               <FaCalendarAlt className="input-icon" />
@@ -276,7 +271,6 @@ function EmployeeForm({ onEmployeeAdded, selectedEmployee, onUpdateComplete }) {
             )}
           </div>
 
-          {/* Department */}
           <div className="form-group">
             <label className="input-label">
               <FaBuilding className="input-icon" />
@@ -303,7 +297,6 @@ function EmployeeForm({ onEmployeeAdded, selectedEmployee, onUpdateComplete }) {
             )}
           </div>
 
-          {/* Status */}
           <div className="form-group full-width">
             <label className="input-label">Status</label>
             <div className="radio-group">
@@ -335,7 +328,6 @@ function EmployeeForm({ onEmployeeAdded, selectedEmployee, onUpdateComplete }) {
           </div>
         </div>
 
-        {/* Submit Button */}
         <div className="form-actions-right">
           <button
             type="submit"
@@ -348,7 +340,6 @@ function EmployeeForm({ onEmployeeAdded, selectedEmployee, onUpdateComplete }) {
         </div>
       </form>
 
-      {/* Success/Error Modal */}
       {isModalOpen && (
         <div className="modern-modal-overlay">
           <div className="modern-modal">

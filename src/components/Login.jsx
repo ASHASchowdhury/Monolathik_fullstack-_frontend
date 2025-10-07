@@ -14,7 +14,6 @@ function Login({ onLogin, isLogin, onToggleMode }) {
     setIsLoading(true);
 
     try {
-      // Demo login - replace with your API
       const demoUser = {
         id: 1,
         username: credentials.username || "admin",
@@ -95,7 +94,8 @@ function Login({ onLogin, isLogin, onToggleMode }) {
       borderRadius: "8px",
       fontSize: "0.95rem",
       fontFamily: "inherit",
-      boxSizing: "border-box"
+      boxSizing: "border-box",
+      transition: "all 0.2s ease"
     },
     inputIcon: {
       position: "absolute",
@@ -114,7 +114,8 @@ function Login({ onLogin, isLogin, onToggleMode }) {
       fontSize: "1rem",
       fontWeight: "600",
       cursor: "pointer",
-      marginTop: "0.5rem"
+      marginTop: "0.5rem",
+      transition: "all 0.2s ease"
     },
     toggleText: {
       textAlign: "center",
