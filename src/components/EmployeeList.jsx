@@ -22,29 +22,34 @@ import {
 import "./EmployeeList.css";
 
 function EmployeeList({ employees, onEmployeeDeleted, onEditEmployee }) {
+  // State variables for managing component data
   const [confirmDelete, setConfirmDelete] = useState({ show: false, empId: null, empName: "" });
-  const [viewEmployee, setViewEmployee] = useState(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [selectedEmployee, setSelectedEmployee] = useState(null); // Currently selected employee for viewing
+  const [isModalOpen, setIsModalOpen] = useState(false); // Controls modal visibility
+  const [searchTerm, setSearchTerm] = useState(""); // Search input value
+  const [statusFilter, setStatusFilter] = useState("all"); // Filter for active/inactive employees
 
+  // Filter employees based on search and status
   const filteredEmployees = employees.filter(emp => {
-    const matchesSearch = emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         emp.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = emp.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         emp.email?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "all" || 
                          (statusFilter === "active" && emp.active) ||
                          (statusFilter === "inactive" && !emp.active);
     return matchesSearch && matchesStatus;
   });
 
+  // Delete employee from database
   const deleteEmployee = async (id) => {
     try {
       await axios.delete(`http://10.0.6.1:8080/employees/${id}`);
-      onEmployeeDeleted();
+      onEmployeeDeleted(); // Refresh employee list
     } catch (err) {
       console.error("Error deleting employee:", err);
     }
   };
 
+  // Return appropriate gender icon
   const getGenderIcon = (gender) => {
     switch (gender?.toLowerCase()) {
       case "male":
@@ -56,10 +61,19 @@ function EmployeeList({ employees, onEmployeeDeleted, onEditEmployee }) {
     }
   };
 
+  // Open modal with employee details
   const handleViewEmployee = (emp) => {
-    setViewEmployee(emp);
+    setSelectedEmployee(emp);
+    setIsModalOpen(true);
   };
 
+  // Close modal and reset selection
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setSelectedEmployee(null);
+  };
+
+  // Calculate age from date of birth
   const calculateAge = (dateString) => {
     if (!dateString) return 'N/A';
     const today = new Date();
@@ -73,6 +87,7 @@ function EmployeeList({ employees, onEmployeeDeleted, onEditEmployee }) {
     return age;
   };
 
+  // Format date to readable string
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -84,6 +99,7 @@ function EmployeeList({ employees, onEmployeeDeleted, onEditEmployee }) {
 
   return (
     <div className="modern-employee-list">
+      {/* Header with title and filters */}
       <div className="list-header">
         <div className="header-content">
           <div className="header-title">
@@ -91,6 +107,7 @@ function EmployeeList({ employees, onEmployeeDeleted, onEditEmployee }) {
             <span className="employee-count">{filteredEmployees.length} of {employees.length} employees</span>
           </div>
           <div className="header-actions">
+            {/* Search input */}
             <div className="search-box">
               <FaSearch className="search-icon" />
               <input
@@ -101,6 +118,7 @@ function EmployeeList({ employees, onEmployeeDeleted, onEditEmployee }) {
                 className="search-input"
               />
             </div>
+            {/* Status filter dropdown */}
             <div className="filter-group">
               <FaFilter className="filter-icon" />
               <select 
@@ -117,15 +135,17 @@ function EmployeeList({ employees, onEmployeeDeleted, onEditEmployee }) {
         </div>
       </div>
 
+      {/* Grid of employee cards */}
       <div className="employee-grid">
         {filteredEmployees.map((emp) => (
           <div key={emp.id} className="modern-employee-card">
+            {/* Card header with basic info */}
             <div className="card-header">
               <div className="employee-avatar">
                 <FaUser />
               </div>
               <div className="employee-info">
-                <h3>{emp.name}</h3>
+                <h3>{emp.name || "Unnamed Employee"}</h3>
                 <span className="employee-id">#{emp.id}</span>
               </div>
               <div className={`status-indicator ${emp.active ? 'active' : 'inactive'}`}>
@@ -133,6 +153,7 @@ function EmployeeList({ employees, onEmployeeDeleted, onEditEmployee }) {
               </div>
             </div>
 
+            {/* Card body with employee details */}
             <div className="card-body">
               <div className="info-item">
                 <FaBuilding className="info-icon" />
@@ -162,6 +183,7 @@ function EmployeeList({ employees, onEmployeeDeleted, onEditEmployee }) {
               </div>
             </div>
 
+            {/* Action buttons */}
             <div className="card-actions">
               <button 
                 className="action-btn view-btn" 
@@ -189,6 +211,7 @@ function EmployeeList({ employees, onEmployeeDeleted, onEditEmployee }) {
         ))}
       </div>
 
+      {/* Show empty state when no employees found */}
       {filteredEmployees.length === 0 && (
         <div className="empty-state">
           <FaUser className="empty-icon" />
@@ -197,13 +220,13 @@ function EmployeeList({ employees, onEmployeeDeleted, onEditEmployee }) {
         </div>
       )}
 
-      {/* Employee Details View Modal */}
-      {viewEmployee && (
+      {/* Employee Details Modal - Shows when isModalOpen is true */}
+      {isModalOpen && selectedEmployee && (
         <div className="modern-modal-overlay">
           <div className="employee-details-modal">
             <div className="modal-header">
               <h2>Employee Details</h2>
-              <button className="modal-close" onClick={() => setViewEmployee(null)}>
+              <button className="modal-close" onClick={closeModal}>
                 <FaClose />
               </button>
             </div>
@@ -214,65 +237,70 @@ function EmployeeList({ employees, onEmployeeDeleted, onEditEmployee }) {
                   <FaUser />
                 </div>
                 <div className="details-title">
-                  <h3>{viewEmployee.name}</h3>
-                  <p className="employee-id">Employee ID: #{viewEmployee.id}</p>
-                  <span className={`details-status ${viewEmployee.active ? 'active' : 'inactive'}`}>
-                    {viewEmployee.active ? 'Active' : 'Inactive'}
+                  <h3>{selectedEmployee.name || "Unnamed Employee"}</h3>
+                  <p className="employee-id">Employee ID: #{selectedEmployee.id}</p>
+                  <span className={`details-status ${selectedEmployee.active ? 'active' : 'inactive'}`}>
+                    {selectedEmployee.active ? 'Active' : 'Inactive'}
                   </span>
                 </div>
               </div>
 
+              {/* Detailed employee information grid */}
               <div className="details-grid">
                 <div className="detail-item">
                   <label>Email</label>
-                  <p>{viewEmployee.email || "N/A"}</p>
+                  <p>{selectedEmployee.email || "N/A"}</p>
                 </div>
                 <div className="detail-item">
                   <label>Phone Number</label>
-                  <p>{viewEmployee.phoneNumber || "N/A"}</p>
+                  <p>{selectedEmployee.phoneNumber || "N/A"}</p>
                 </div>
                 <div className="detail-item">
                   <label>Gender</label>
                   <p className="gender-detail">
-                    {getGenderIcon(viewEmployee.gender)}
-                    {viewEmployee.gender ? viewEmployee.gender.charAt(0).toUpperCase() + viewEmployee.gender.slice(1) : "N/A"}
+                    {getGenderIcon(selectedEmployee.gender)}
+                    {selectedEmployee.gender ? selectedEmployee.gender.charAt(0).toUpperCase() + selectedEmployee.gender.slice(1) : "N/A"}
                   </p>
                 </div>
                 <div className="detail-item">
                   <label>Blood Group</label>
                   <p className="blood-group-detail">
-                    {viewEmployee.bloodGroup ? (
+                    {selectedEmployee.bloodGroup ? (
                       <>
                         <FaTint />
-                        {viewEmployee.bloodGroup}
+                        {selectedEmployee.bloodGroup}
                       </>
                     ) : "N/A"}
                   </p>
                 </div>
                 <div className="detail-item">
                   <label>Date of Birth</label>
-                  <p>{formatDate(viewEmployee.dateOfBirth)}</p>
+                  <p>{formatDate(selectedEmployee.dateOfBirth)}</p>
                 </div>
                 <div className="detail-item">
                   <label>Age</label>
-                  <p>{calculateAge(viewEmployee.dateOfBirth)} years</p>
+                  <p>{calculateAge(selectedEmployee.dateOfBirth)} years</p>
                 </div>
                 <div className="detail-item full-width">
                   <label>Department</label>
                   <p className="department-detail">
                     <FaBuilding />
-                    {viewEmployee.departmentDTO?.name || "No Department Assigned"}
+                    {selectedEmployee.departmentDTO?.name || "No Department Assigned"}
                   </p>
                 </div>
               </div>
             </div>
 
+            {/* Modal footer with action buttons */}
             <div className="modal-footer">
+              <button className="btn-primary" onClick={closeModal}>
+                Close
+              </button>
               <button 
                 className="edit-profile-btn"
                 onClick={() => {
-                  onEditEmployee(viewEmployee);
-                  setViewEmployee(null);
+                  onEditEmployee(selectedEmployee);
+                  closeModal();
                 }}
               >
                 <FaEdit />
@@ -283,7 +311,7 @@ function EmployeeList({ employees, onEmployeeDeleted, onEditEmployee }) {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
+      {/* Delete Confirmation Modal - Shows when confirmDelete.show is true */}
       {confirmDelete.show && (
         <div className="modern-modal-overlay">
           <div className="delete-confirmation">

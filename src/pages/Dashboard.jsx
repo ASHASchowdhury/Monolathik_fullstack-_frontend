@@ -14,22 +14,15 @@ import {
   FaArrowUp,
   FaArrowDown,
   FaCog,
-  FaSignOutAlt
+  FaSignOutAlt,
+  FaTasks
 } from "react-icons/fa";
 import EmployeeForm from "../components/EmployeeForm";
 import EmployeeList from "../components/EmployeeList";
-import DepartmentForm from "../components/DepartmentFrom"; // Fixed typo
+import DepartmentForm from "../components/DepartmentFrom";
 import DepartmentList from "../components/DepartmentList";
+import { TaskManager } from "../components/TaskManager";
 import "../styles/Dashboard.css";
-
-// API Configuration
-const API_BASE = "http://10.0.6.1:8080";
-const username = 'admin';
-const password = 'admin123';
-
-// Configure axios defaults
-axios.defaults.baseURL = API_BASE;
-axios.defaults.auth = { username, password };
 
 function Dashboard({ user, onLogout }) {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -38,14 +31,21 @@ function Dashboard({ user, onLogout }) {
     totalEmployees: 0,
     totalDepartments: 0,
     activeEmployees: 0,
-    inactiveEmployees: 0
+    inactiveEmployees: 0,
+    totalTasks: 0,
+    pendingTasks: 0,
+    completedTasks: 0
   });
   const [employees, setEmployees] = useState([]);
   const [departments, setDepartments] = useState([]);
+  const [tasks, setTasks] = useState([]);
   const [editingEmployee, setEditingEmployee] = useState(null);
   const [editingDepartment, setEditingDepartment] = useState(null);
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState("");
+
+  // API Configuration
+  const API_BASE = "http://localhost:8080";
 
   // Fetch dashboard data on component mount
   useEffect(() => {
@@ -53,34 +53,56 @@ function Dashboard({ user, onLogout }) {
   }, []);
 
   const fetchDashboardData = async () => {
-    try {
+    try { 
       setLoading(true);
       setApiError("");
       
-      const [empRes, deptRes] = await Promise.all([
-        axios.get("/employees"),
-        axios.get("/departments")
+      // Use the logged-in user's credentials
+      const currentUser = JSON.parse(localStorage.getItem('user'));
+      const config = {
+        auth: {
+          username: currentUser?.username || 'hr',
+          password: 'hr123'
+        }
+      };
+
+      const [empRes, deptRes, tasksRes] = await Promise.all([
+        axios.get(`${API_BASE}/employees`, config),
+        axios.get(`${API_BASE}/departments`, config),
+        axios.get(`${API_BASE}/api/tasks`, config).catch(() => ({ data: [] })) // Tasks might not be implemented yet
       ]);
 
       const employeesData = empRes.data || [];
       const departmentsData = deptRes.data || [];
+      const tasksData = tasksRes.data || [];
 
       setEmployees(employeesData);
       setDepartments(departmentsData);
+      setTasks(tasksData);
 
       const activeCount = employeesData.filter(emp => emp.active).length;
+      const pendingTasks = tasksData.filter(task => task.status === 'PENDING').length;
+      const completedTasks = tasksData.filter(task => task.status === 'COMPLETED').length;
       
       setStats({
         totalEmployees: employeesData.length,
         totalDepartments: departmentsData.length,
         activeEmployees: activeCount,
-        inactiveEmployees: employeesData.length - activeCount
+        inactiveEmployees: employeesData.length - activeCount,
+        totalTasks: tasksData.length,
+        pendingTasks: pendingTasks,
+        completedTasks: completedTasks
       });
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
-      setApiError("Failed to load dashboard data. Please check your connection.");
+      if (error.response?.status === 401) {
+        setApiError("Authentication failed. Please login again.");
+      } else {
+        setApiError("Failed to load dashboard data. Please check your connection.");
+      }
       setEmployees([]);
       setDepartments([]);
+      setTasks([]);
     } finally {
       setLoading(false);
     }
@@ -144,12 +166,13 @@ function Dashboard({ user, onLogout }) {
   );
 
   // Dashboard Stats Cards
-  const StatCard = ({ title, value, icon, color, change }) => (
+  const StatCard = ({ title, value, icon, color, change, subtitle }) => (
     <div className={`stat-card ${color}`}>
       <div className="stat-icon">{icon}</div>
       <div className="stat-content">
         <h3>{value}</h3>
         <p>{title}</p>
+        {subtitle && <span className="stat-subtitle">{subtitle}</span>}
         {change && (
           <span className={`stat-change ${change > 0 ? 'positive' : 'negative'}`}>
             {change > 0 ? <FaArrowUp /> : <FaArrowDown />}
@@ -161,26 +184,42 @@ function Dashboard({ user, onLogout }) {
   );
 
   // Recent Activity Component
-  const RecentActivity = () => (
-    <div className="recent-activity">
-      <h3>Recent Activity</h3>
-      <div className="activity-list">
-        {employees.slice(0, 5).map(emp => (
-          <div key={emp.id} className="activity-item">
-            <div className="activity-avatar">
-              <FaUsers />
+  const RecentActivity = () => {
+    const recentTasks = tasks.slice(0, 3);
+    const recentEmployees = employees.slice(0, 2);
+    
+    return (
+      <div className="recent-activity">
+        <h3>Recent Activity</h3>
+        <div className="activity-list">
+          {recentTasks.map(task => (
+            <div key={task.id} className="activity-item">
+              <div className="activity-avatar task">
+                <FaTasks />
+              </div>
+              <div className="activity-content">
+                <p><strong>New Task:</strong> {task.title}</p>
+                <span className="activity-time">Assigned to {task.assignedTo?.name}</span>
+              </div>
             </div>
-            <div className="activity-content">
-              <p><strong>{emp.name}</strong> was {emp.active ? 'activated' : 'deactivated'}</p>
-              <span className="activity-time">Today</span>
+          ))}
+          {recentEmployees.map(emp => (
+            <div key={emp.id} className="activity-item">
+              <div className="activity-avatar employee">
+                <FaUsers />
+              </div>
+              <div className="activity-content">
+                <p><strong>{emp.name}</strong> was {emp.active ? 'activated' : 'deactivated'}</p>
+                <span className="activity-time">Today</span>
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
-  // Render active component based on tab - FIXED: Now properly defined
+  // Render active component based on tab
   const renderActiveComponent = () => {
     switch (activeTab) {
       case "dashboard":
@@ -209,11 +248,12 @@ function Dashboard({ user, onLogout }) {
                 change={8}
               />
               <StatCard
-                title="Inactive Employees"
-                value={stats.inactiveEmployees}
-                icon={<FaExclamationTriangle />}
+                title="Total Tasks"
+                value={stats.totalTasks}
+                subtitle={`${stats.pendingTasks} pending, ${stats.completedTasks} completed`}
+                icon={<FaTasks />}
                 color="orange"
-                change={-3}
+                change={12}
               />
             </div>
 
@@ -249,8 +289,34 @@ function Dashboard({ user, onLogout }) {
               <RecentActivity />
             </div>
 
-            <div className="chat-section">
-              <ChatSystem />
+            <div className="dashboard-grid">
+              <div className="task-overview">
+                <h3>Task Overview</h3>
+                <div className="task-stats">
+                  <div className="task-stat">
+                    <span className="stat-number">{stats.totalTasks}</span>
+                    <span className="stat-label">Total Tasks</span>
+                  </div>
+                  <div className="task-stat">
+                    <span className="stat-number pending">{stats.pendingTasks}</span>
+                    <span className="stat-label">Pending</span>
+                  </div>
+                  <div className="task-stat">
+                    <span className="stat-number completed">{stats.completedTasks}</span>
+                    <span className="stat-label">Completed</span>
+                  </div>
+                </div>
+                <button 
+                  className="btn-primary"
+                  onClick={() => setActiveTab("tasks")}
+                >
+                  <FaTasks /> Manage Tasks
+                </button>
+              </div>
+
+              <div className="chat-section">
+                <ChatSystem />
+              </div>
             </div>
           </div>
         );
@@ -275,7 +341,7 @@ function Dashboard({ user, onLogout }) {
               />
             ) : (
               <EmployeeList
-                employees={employees} // FIXED: Now used
+                employees={employees}
                 onEmployeeDeleted={handleEmployeeDeleted}
                 onEditEmployee={handleEditEmployee}
               />
@@ -290,7 +356,7 @@ function Dashboard({ user, onLogout }) {
               <h2>Department Management</h2>
               <button 
                 className="add-btn"
-                onClick={() => setEditingDepartment({})} // FIXED: Now used
+                onClick={() => setEditingDepartment({})}
               >
                 <FaUserPlus /> Add Department
               </button>
@@ -298,7 +364,7 @@ function Dashboard({ user, onLogout }) {
             
             <DepartmentForm
               onDepartmentAdded={handleDepartmentAdded}
-              editingDepartment={editingDepartment} // FIXED: Now used
+              editingDepartment={editingDepartment}
             />
             
             {!editingDepartment && (
@@ -319,10 +385,20 @@ function Dashboard({ user, onLogout }) {
               <span className="active-count">{stats.activeEmployees} Active Employees</span>
             </div>
             <EmployeeList
-              employees={employees.filter(emp => emp.active)} // FIXED: Now used
+              employees={employees.filter(emp => emp.active)}
               onEmployeeDeleted={handleEmployeeDeleted}
               onEditEmployee={handleEditEmployee}
             />
+          </div>
+        );
+
+      case "tasks":
+        return (
+          <div className="tab-content">
+            <div className="content-header">
+              <h2>Task Management</h2>
+            </div>
+            <TaskManager user={user} />
           </div>
         );
 
@@ -383,6 +459,15 @@ function Dashboard({ user, onLogout }) {
           </button>
 
           <button
+            className={`nav-item ${activeTab === "tasks" ? "active" : ""}`}
+            onClick={() => setActiveTab("tasks")}
+          >
+            <FaTasks />
+            <span>Tasks</span>
+            <span className="nav-badge">{stats.totalTasks}</span>
+          </button>
+
+          <button
             className={`nav-item ${activeTab === "active-employees" ? "active" : ""}`}
             onClick={() => setActiveTab("active-employees")}
           >
@@ -416,6 +501,7 @@ function Dashboard({ user, onLogout }) {
               {activeTab === "dashboard" && "Dashboard Overview"}
               {activeTab === "employees" && "Employee Management"}
               {activeTab === "departments" && "Department Management"}
+              {activeTab === "tasks" && "Task Management"}
               {activeTab === "active-employees" && "Active Employees"}
               {activeTab === "chat" && "Team Chat"}
             </h1>
@@ -423,6 +509,7 @@ function Dashboard({ user, onLogout }) {
               {activeTab === "dashboard" && "Welcome to your HR Dashboard"}
               {activeTab === "employees" && "Manage your team members"}
               {activeTab === "departments" && "Organize your departments"}
+              {activeTab === "tasks" && "Assign and track tasks"}
               {activeTab === "active-employees" && "Currently active team members"}
               {activeTab === "chat" && "Communicate with your team"}
             </p>
@@ -432,14 +519,30 @@ function Dashboard({ user, onLogout }) {
               <div className="user-avatar">
                 <FaUsers />
               </div>
-              <span>Welcome, {user?.name || user?.username}</span>
+              <div className="user-info">
+                <span className="user-name">Welcome, {user?.name || user?.username}</span>
+                <span className="user-role">{user?.role}</span>
+              </div>
             </div>
           </div>
         </header>
 
         <main className="dashboard-content-area">
+          {/* Global Back Button - Only show when not on dashboard */}
+          {activeTab !== "dashboard" && (
+            <div className="global-back-button">
+              <button 
+                className="back-btn"
+                onClick={() => setActiveTab("dashboard")}
+              >
+                ← Back to Dashboard
+              </button>
+            </div>
+          )}
+          
           {apiError && (
             <div className="error-banner">
+              <FaExclamationTriangle />
               {apiError}
             </div>
           )}
@@ -449,7 +552,7 @@ function Dashboard({ user, onLogout }) {
               <p>Loading dashboard data...</p>
             </div>
           ) : (
-            renderActiveComponent() // FIXED: Now properly defined
+            renderActiveComponent()
           )}
         </main>
       </div>

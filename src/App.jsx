@@ -5,37 +5,36 @@ import './App.css';
 
 function App() {
   const [user, setUser] = useState(null);
-  const [showLogin, setShowLogin] = useState(true); // true=login, false=register
+  const [showLogin, setShowLogin] = useState(true);
   const [loading, setLoading] = useState(true);
 
-  // Check if user is already logged in on app startup
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
     if (savedUser) {
-      setUser(JSON.parse(savedUser)); // Restore user session from localStorage
+      const userData = JSON.parse(savedUser);
+      // Check if user has valid role when loading from localStorage
+      const allowedRoles = ["HR", "PM", "CTO", "DIRECTOR"];
+      if (allowedRoles.includes(userData.role?.toUpperCase())) {
+        setUser(userData);
+      } else {
+        // Clear invalid user data
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+      }
     }
     setLoading(false);
   }, []);
 
-  /**
-   * Handle successful login
-   * @param {Object} userData - User data from API response
-   */
   const handleLogin = (userData) => {
-    setUser(userData); // Set user state to trigger Dashboard render
+    setUser(userData);
   };
 
-  /**
-   * Handle user logout
-   * Clears all stored authentication data
-   */
   const handleLogout = () => {
     localStorage.removeItem('user');
     localStorage.removeItem('token');
-    setUser(null); // Reset user state to trigger Login render
+    setUser(null);
   };
 
-  // Show loading spinner while checking authentication
   if (loading) {
     return (
       <div style={{ 
@@ -51,7 +50,6 @@ function App() {
     );
   }
 
-  // Show Login component if no user is authenticated
   if (!user) {
     return (
       <Login 
@@ -62,7 +60,6 @@ function App() {
     );
   }
 
-  // Show Dashboard if user is authenticated
   return <Dashboard user={user} onLogout={handleLogout} />;
 }
 

@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import axios from "axios";
 import { FaUser, FaLock, FaBuilding, FaEnvelope, FaExclamationTriangle, FaCheck } from "react-icons/fa";
 
-function Login({ onLogin, isLogin, onToggleMode }) {
+function Login({ onLogin, isLogin }) {
   const [credentials, setCredentials] = useState({
     username: "",
     password: "",
@@ -13,7 +13,10 @@ function Login({ onLogin, isLogin, onToggleMode }) {
   const [success, setSuccess] = useState("");
 
   // API Base URL
-  const API_BASE = "http://10.0.6.1:8080";
+  const API_BASE = "http://localhost:8080";
+
+  // Allowed roles that can access the system
+  const ALLOWED_ROLES = ["HR", "PM", "CTO", "DIRECTOR"];
 
   /**
    * Handle login form submission
@@ -25,12 +28,20 @@ function Login({ onLogin, isLogin, onToggleMode }) {
     setError("");
     setSuccess("");
 
+    // Basic validation
+    if (!credentials.username || !credentials.password) {
+      setError("Please enter both username and password");
+      setIsLoading(false);
+      return;
+    }
+
     try {
       console.log("Login attempt with:", {
         username: credentials.username,
-        password: credentials.password
+        password: "***" // Don't log actual password
       });
 
+      // API Call: POST /auth/login
       const response = await axios.post(`${API_BASE}/auth/login`, {
         username: credentials.username,
         password: credentials.password
@@ -38,109 +49,55 @@ function Login({ onLogin, isLogin, onToggleMode }) {
 
       console.log("Login API response:", response.data);
 
+      // Handle successful login response
       if (response.data.success) {
         const userData = {
-          id: response.data.id,
+          id: response.data.id || Date.now(), // Use timestamp as fallback ID
           username: response.data.username,
           role: response.data.role,
-          name: response.data.username,
-          email: credentials.email || `${response.data.username}@company.com`
+          name: response.data.name || response.data.username, // Use name if provided, else username
+          email: response.data.email || `${response.data.username}@company.com`
         };
-        
+
+        // Check if user has allowed role
+        if (!ALLOWED_ROLES.includes(userData.role.toUpperCase())) {
+          setError("Access denied. Only HR, PM, CTO, and Director can access this system.");
+          setIsLoading(false);
+          return;
+        }
+
+        // Store user data in localStorage for session persistence
         localStorage.setItem("user", JSON.stringify(userData));
-        setSuccess("Login successful! Redirecting...");
+        localStorage.setItem("token", response.data.token || "dummy-token"); // Store token if available
         
-        setTimeout(() => onLogin(userData), 1000);
+        setSuccess(`Login successful! Welcome ${userData.role} ${userData.name}`);
+        
+        // Notify parent component about successful login
+        setTimeout(() => onLogin(userData), 1500);
       } else {
-        setError(response.data.message || "Login failed");
+        setError(response.data.message || "Login failed. Please check your credentials.");
       }
     } catch (err) {
       console.error("Login API error:", err);
-      console.error("Error response:", err.response?.data);
       
-      if (err.response?.data?.message) {
+      // Enhanced error handling
+      if (err.response?.status === 401) {
+        setError("Invalid username or password");
+      } else if (err.response?.status === 403) {
+        setError("Access denied. Insufficient permissions.");
+      } else if (err.response?.data?.message) {
         setError(err.response.data.message);
-      } else {
-        setError("Login failed. Please check your credentials and try again.");
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  /**
-   * Handle registration form submission
-   * Makes API call to /auth/register endpoint
-   */
-  const handleRegister = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError("");
-    setSuccess("");
-
-    console.log("=== REGISTRATION DEBUG ===");
-    console.log("Registration data:", credentials);
-
-    // Enhanced validation
-    if (!credentials.email.includes('@')) {
-      setError("Please enter a valid email address");
-      setIsLoading(false);
-      return;
-    }
-
-    if (credentials.password.length < 6) {
-      setError("Password must be at least 6 characters long");
-      setIsLoading(false);
-      return;
-    }
-
-    if (credentials.username.length < 3) {
-      setError("Username must be at least 3 characters long");
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      console.log("Making API call to:", `${API_BASE}/auth/register`);
-      
-      const response = await axios.post(`${API_BASE}/auth/register`, {
-        username: credentials.username,
-        password: credentials.password,
-        email: credentials.email
-      });
-
-      console.log("Registration response:", response.data);
-
-      // Handle successful registration response
-      if (response.data.success || response.data.message || response.status === 200) {
-        setSuccess("Registration successful! Please login with your credentials.");
-        // Switch to login mode after successful registration
-        setTimeout(() => {
-          onToggleMode();
-          setCredentials({ username: "", password: "", email: "" });
-        }, 2000);
-      } else {
-        setError(response.data.message || "Registration failed. Please try again.");
-      }
-    } catch (err) {
-      console.error("Registration error:", err);
-      console.error("Error response:", err.response?.data);
-      
-      if (err.response?.data?.message) {
-        setError(`Registration failed: ${err.response.data.message}`);
-      } else if (err.response?.status === 409) {
-        setError("Username already exists. Please choose a different username.");
-      } else if (err.response?.status === 400) {
-        setError("Invalid registration data. Please check your input.");
       } else if (err.request) {
         setError("Cannot connect to server. Please check if the backend is running.");
       } else {
-        setError("Registration failed. Please try again.");
+        setError("Login failed. Please try again.");
       }
     } finally {
       setIsLoading(false);
     }
   };
+
+
 
   /**
    * Handle form submission based on current mode (login/register)
@@ -148,9 +105,7 @@ function Login({ onLogin, isLogin, onToggleMode }) {
   const handleSubmit = (e) => {
     if (isLogin) {
       handleLogin(e);
-    } else {
-      handleRegister(e);
-    }
+    } 
   };
 
   /**
@@ -165,7 +120,6 @@ function Login({ onLogin, isLogin, onToggleMode }) {
     if (error) setError("");
     if (success) setSuccess("");
   };
-
 
   // Inline styles for the component
   const styles = {
@@ -296,17 +250,6 @@ function Login({ onLogin, isLogin, onToggleMode }) {
       alignItems: "center",
       justifyContent: "center",
       gap: "0.5rem"
-    },
-    testButton: {
-      background: "none",
-      border: "1px solid #d1d5db",
-      color: "#6b7280",
-      padding: "0.5rem 1rem",
-      borderRadius: "6px",
-      fontSize: "0.8rem",
-      cursor: "pointer",
-      marginTop: "1rem",
-      width: "100%"
     }
   };
 
@@ -418,25 +361,15 @@ function Login({ onLogin, isLogin, onToggleMode }) {
                   borderRadius: "50%",
                   animation: "spin 1s linear infinite"
                 }}></div>
-                {isLogin ? "Signing In..." : "Registering..."}
+                {isLogin ? "Signing In..." : "Creating Account..."}
               </>
             ) : (
-              isLogin ? "Sign In" : "Register Now"
+              isLogin ? "Sign In" : "Create Account"
             )}
           </button>
         </form>
 
-        {/* Toggle between Login and Register */}
-        <div style={styles.toggleText}>
-          {isLogin ? "Don't have an account? " : "Already have an account? "}
-          <button
-            style={styles.toggleLink}
-            onClick={onToggleMode}
-            disabled={isLoading}
-          >
-            {isLogin ? "Sign up" : "Sign in"}
-          </button>
-        </div>
+      
       </div>
 
       {/* Loading animation styles */}
