@@ -21,7 +21,7 @@ import EmployeeForm from "../components/EmployeeForm";
 import EmployeeList from "../components/EmployeeList";
 import DepartmentForm from "../components/DepartmentFrom";
 import DepartmentList from "../components/DepartmentList";
-import { TaskManager } from "../components/TaskManager";
+import TaskManager from "../components/TaskManager";
 import "../styles/Dashboard.css";
 
 function Dashboard({ user, onLogout }) {
@@ -69,7 +69,7 @@ function Dashboard({ user, onLogout }) {
       const [empRes, deptRes, tasksRes] = await Promise.all([
         axios.get(`${API_BASE}/employees`, config),
         axios.get(`${API_BASE}/departments`, config),
-        axios.get(`${API_BASE}/api/tasks`, config).catch(() => ({ data: [] })) // Tasks might not be implemented yet
+        axios.get(`${API_BASE}/tasks`, config).catch(() => ({ data: [] })) // Tasks might not be implemented yet
       ]);
 
       const employeesData = empRes.data || [];
