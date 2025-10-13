@@ -36,13 +36,7 @@ function TaskManager() {
 
   const API_BASE = "http://localhost:8080";
 
-  // Task status and priority options based on your API
-  const TASK_STATUS = {
-    PENDING: "PENDING",
-    IN_PROGRESS: "IN_PROGRESS", 
-    COMPLETED: "COMPLETED"
-  };
-
+  // Task priority options based on your API
   const TASK_PRIORITY = {
     LOW: "LOW",
     MEDIUM: "MEDIUM",
@@ -98,11 +92,27 @@ function TaskManager() {
     }
   };
 
+  // NEW: Get employee name by ID
+  const getEmployeeName = (employeeId) => {
+    if (!employeeId) return "Unassigned";
+    const employee = employees.find(emp => emp.id === employeeId);
+    return employee ? employee.name : `Employee #${employeeId}`;
+  };
+
+  // NEW: Get employee details by ID
+  const getEmployeeDetails = (employeeId) => {
+    if (!employeeId) return null;
+    return employees.find(emp => emp.id === employeeId);
+  };
+
   // Filter tasks based on search and filters
   const filteredTasks = tasks.filter(task => {
     const matchesSearch = task.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          task.description?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || task.status === statusFilter;
+    const matchesStatus = statusFilter === "all" || 
+                         (statusFilter === "pending" && !task.started && !task.completed) ||
+                         (statusFilter === "in-progress" && task.started && !task.completed) ||
+                         (statusFilter === "completed" && task.completed);
     const matchesPriority = priorityFilter === "all" || task.priority === priorityFilter;
     
     return matchesSearch && matchesStatus && matchesPriority;
@@ -138,16 +148,51 @@ function TaskManager() {
     }
   };
 
-  // Update task status
-  const updateTaskStatus = async (taskId, status) => {
+  // Start task - set started to true
+  const startTask = async (taskId) => {
     try {
-      // Using query parameter as shown in your API
-      await axios.patch(`${API_BASE}/tasks/${taskId}/status?status=${status}`, {}, getAuthConfig());
+      const taskData = {
+        started: true,
+        completed: false
+      };
+      await axios.put(`${API_BASE}/tasks/${taskId}`, taskData, getAuthConfig());
       fetchTasks();
       setError("");
     } catch (err) {
-      console.error("Error updating task status:", err);
-      setError(err.response?.data?.message || "Failed to update task status.");
+      console.error("Error starting task:", err);
+      setError(err.response?.data?.message || "Failed to start task.");
+    }
+  };
+
+  // Complete task - set completed to true
+  const completeTask = async (taskId) => {
+    try {
+      const taskData = {
+        started: true,
+        completed: true
+      };
+      await axios.put(`${API_BASE}/tasks/${taskId}`, taskData, getAuthConfig());
+      fetchTasks();
+      setError("");
+    } catch (err) {
+      console.error("Error completing task:", err);
+      setError(err.response?.data?.message || "Failed to complete task.");
+    }
+  };
+
+  // Reopen task - set completed to false
+  const reopenTask = async (taskId) => {
+    try {
+      const taskData = {
+        started: true,
+        completed: false
+      };
+      await axios.put(`${API_BASE}/tasks/${taskId}`, taskData, getAuthConfig());
+      fetchTasks();
+      setError("");
+    } catch (err) {
+      console.error("Error reopening task:", err);
+      setError(err.response?.data?.message || "Failed to reopen task.");
     }
   };
 
@@ -163,14 +208,22 @@ function TaskManager() {
     }
   };
 
+  // Get status based on started and completed booleans
+  const getTaskStatus = (task) => {
+    if (task.completed) return "completed";
+    if (task.started) return "in-progress";
+    return "pending";
+  };
+
   // Get status icon and color
-  const getStatusIcon = (status) => {
+  const getStatusIcon = (task) => {
+    const status = getTaskStatus(task);
     switch (status) {
-      case TASK_STATUS.PENDING:
+      case "pending":
         return <FaClock className="status-icon pending" />;
-      case TASK_STATUS.IN_PROGRESS:
+      case "in-progress":
         return <FaPlayCircle className="status-icon in-progress" />;
-      case TASK_STATUS.COMPLETED:
+      case "completed":
         return <FaCheckCircle className="status-icon completed" />;
       default:
         return <FaClock className="status-icon pending" />;
@@ -210,100 +263,113 @@ function TaskManager() {
   };
 
   // Task Card Component
-  const TaskCard = ({ task }) => (
-    <div className="task-card">
-      <div className="task-header">
-        <div className="task-title-section">
-          <h3>{task.title}</h3>
-          <div className="task-meta">
-            <span className={`priority-badge ${task.priority?.toLowerCase()}`}>
-              {getPriorityIcon(task.priority)}
-              {task.priority}
-            </span>
-            <span className={`status-badge ${task.status?.toLowerCase()}`}>
-              {getStatusIcon(task.status)}
-              {task.status?.replace('_', ' ')}
-            </span>
-            {isOverdue(task.dueDate) && task.status !== TASK_STATUS.COMPLETED && (
-              <span className="overdue-badge">Overdue</span>
+  const TaskCard = ({ task }) => {
+    const status = getTaskStatus(task);
+    
+    return (
+      <div className="task-card">
+        <div className="task-header">
+          <div className="task-title-section">
+            <h3>{task.title}</h3>
+            <div className="task-meta">
+              <span className={`priority-badge ${task.priority?.toLowerCase()}`}>
+                {getPriorityIcon(task.priority)}
+                {task.priority}
+              </span>
+              <span className={`status-badge ${status}`}>
+                {getStatusIcon(task)}
+                {status.replace('-', ' ')}
+              </span>
+              {isOverdue(task.dueDate) && !task.completed && (
+                <span className="overdue-badge">Overdue</span>
+              )}
+            </div>
+          </div>
+          <div className="task-actions">
+            <button 
+              className="action-btn view-btn"
+              onClick={() => setSelectedTask(task)}
+              title="View Details"
+            >
+              <FaEye />
+            </button>
+            <button 
+              className="action-btn edit-btn"
+              onClick={() => setEditingTask(task)}
+              title="Edit Task"
+            >
+              <FaEdit />
+            </button>
+            <button 
+              className="action-btn delete-btn"
+              onClick={() => deleteTask(task.id)}
+              title="Delete Task"
+            >
+              <FaTrash />
+            </button>
+          </div>
+        </div>
+
+        <div className="task-body">
+          <p className="task-description">{task.description}</p>
+          
+          <div className="task-details">
+            <div className="detail-item">
+              <FaCalendarAlt className="detail-icon" />
+              <span className={isOverdue(task.dueDate) && !task.completed ? "overdue" : ""}>
+                Due: {formatDate(task.dueDate)}
+              </span>
+            </div>
+            <div className="detail-item">
+              <FaClock className="detail-icon" />
+              <span>Est: {task.estimatedHours}h</span>
+            </div>
+            <div className="detail-item">
+              <FaUser className="detail-icon" />
+              {/* UPDATED: Show employee name instead of ID */}
+              <span>Assigned to: {getEmployeeName(task.assignedToId)}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="task-footer">
+          <div className="task-id">
+            <small>Task ID: #{task.id}</small>
+          </div>
+          <div className="status-actions">
+            {!task.completed && (
+              <>
+                {!task.started && (
+                  <button 
+                    className="btn-start"
+                    onClick={() => startTask(task.id)}
+                  >
+                    Start Task
+                  </button>
+                )}
+                {task.started && (
+                  <button 
+                    className="btn-complete"
+                    onClick={() => completeTask(task.id)}
+                  >
+                    Mark Complete
+                  </button>
+                )}
+              </>
+            )}
+            {task.completed && (
+              <button 
+                className="btn-reopen"
+                onClick={() => reopenTask(task.id)}
+              >
+                Reopen Task
+              </button>
             )}
           </div>
         </div>
-        <div className="task-actions">
-          <button 
-            className="action-btn view-btn"
-            onClick={() => setSelectedTask(task)}
-            title="View Details"
-          >
-            <FaEye />
-          </button>
-          <button 
-            className="action-btn edit-btn"
-            onClick={() => setEditingTask(task)}
-            title="Edit Task"
-          >
-            <FaEdit />
-          </button>
-          <button 
-            className="action-btn delete-btn"
-            onClick={() => deleteTask(task.id)}
-            title="Delete Task"
-          >
-            <FaTrash />
-          </button>
-        </div>
       </div>
-
-      <div className="task-body">
-        <p className="task-description">{task.description}</p>
-        
-        <div className="task-details">
-          <div className="detail-item">
-            <FaCalendarAlt className="detail-icon" />
-            <span className={isOverdue(task.dueDate) && task.status !== TASK_STATUS.COMPLETED ? "overdue" : ""}>
-              Due: {formatDate(task.dueDate)}
-            </span>
-          </div>
-          <div className="detail-item">
-            <FaClock className="detail-icon" />
-            <span>Est: {task.estimatedHours}h</span>
-          </div>
-          <div className="detail-item">
-            <FaUser className="detail-icon" />
-            <span>Assigned to: Employee #{task.assignedToId}</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="task-footer">
-        <div className="task-id">
-          <small>Task ID: #{task.id}</small>
-        </div>
-        <div className="status-actions">
-          {task.status !== TASK_STATUS.COMPLETED && (
-            <>
-              {task.status === TASK_STATUS.PENDING && (
-                <button 
-                  className="btn-start"
-                  onClick={() => updateTaskStatus(task.id, TASK_STATUS.IN_PROGRESS)}
-                >
-                  Start Task
-                </button>
-              )}
-              {task.status === TASK_STATUS.IN_PROGRESS && (
-                <button 
-                  className="btn-complete"
-                  onClick={() => updateTaskStatus(task.id, TASK_STATUS.COMPLETED)}
-                >
-                  Mark Complete
-                </button>
-              )}
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+    );
+  };
 
   // Task Form Component
   const TaskForm = ({ task, onSave, onCancel }) => {
@@ -313,7 +379,9 @@ function TaskManager() {
       priority: task?.priority || TASK_PRIORITY.MEDIUM,
       dueDate: task?.dueDate || "",
       estimatedHours: task?.estimatedHours || 1,
-      assignedToId: task?.assignedToId || ""
+      assignedToId: task?.assignedToId || "",
+      started: task?.started || false,
+      completed: task?.completed || false
     });
 
     const handleSubmit = (e) => {
@@ -326,7 +394,9 @@ function TaskManager() {
         priority: formData.priority,
         dueDate: formData.dueDate,
         estimatedHours: parseInt(formData.estimatedHours),
-        assignedToId: formData.assignedToId ? parseInt(formData.assignedToId) : null
+        assignedToId: formData.assignedToId ? parseInt(formData.assignedToId) : null,
+        started: formData.started,
+        completed: formData.completed
       };
       
       console.log("Submitting task data:", submitData);
@@ -400,7 +470,7 @@ function TaskManager() {
               </div>
 
               <div className="form-group">
-                <label>Assign To Employee ID</label>
+                <label>Assign To</label>
                 <select
                   value={formData.assignedToId}
                   onChange={(e) => setFormData({...formData, assignedToId: e.target.value})}
@@ -408,12 +478,37 @@ function TaskManager() {
                   <option value="">Select Employee</option>
                   {employees.map(emp => (
                     <option key={emp.id} value={emp.id}>
-                      {emp.name} - ID: {emp.id}
+                      {emp.name} - {emp.position} (ID: {emp.id})
                     </option>
                   ))}
                 </select>
               </div>
             </div>
+
+            {task && (
+              <div className="form-row">
+                <div className="form-group">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={formData.started}
+                      onChange={(e) => setFormData({...formData, started: e.target.checked})}
+                    />
+                    Task Started
+                  </label>
+                </div>
+                <div className="form-group">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={formData.completed}
+                      onChange={(e) => setFormData({...formData, completed: e.target.checked})}
+                    />
+                    Task Completed
+                  </label>
+                </div>
+              </div>
+            )}
 
             <div className="form-actions">
               <button type="button" className="btn-cancel" onClick={onCancel}>
@@ -430,99 +525,139 @@ function TaskManager() {
   };
 
   // Task Details Modal
-  const TaskDetailsModal = ({ task, onClose }) => (
-    <div className="task-details-modal">
-      <div className="modal-content">
-        <div className="modal-header">
-          <h2>Task Details</h2>
-          <button className="modal-close" onClick={onClose}>×</button>
-        </div>
-        
-        <div className="task-details-content">
-          <div className="detail-section">
-            <h3>{task.title}</h3>
-            <div className="detail-meta">
-              <span className={`priority-badge ${task.priority?.toLowerCase()}`}>
-                {getPriorityIcon(task.priority)}
-                {task.priority} Priority
-              </span>
-              <span className={`status-badge ${task.status?.toLowerCase()}`}>
-                {getStatusIcon(task.status)}
-                {task.status?.replace('_', ' ')}
-              </span>
-              {isOverdue(task.dueDate) && task.status !== TASK_STATUS.COMPLETED && (
-                <span className="overdue-badge">Overdue</span>
-              )}
+  const TaskDetailsModal = ({ task, onClose }) => {
+    const status = getTaskStatus(task);
+    const assignedEmployee = getEmployeeDetails(task.assignedToId);
+    
+    return (
+      <div className="task-details-modal">
+        <div className="modal-content">
+          <div className="modal-header">
+            <h2>Task Details</h2>
+            <button className="modal-close" onClick={onClose}>×</button>
+          </div>
+          
+          <div className="task-details-content">
+            <div className="detail-section">
+              <h3>{task.title}</h3>
+              <div className="detail-meta">
+                <span className={`priority-badge ${task.priority?.toLowerCase()}`}>
+                  {getPriorityIcon(task.priority)}
+                  {task.priority} Priority
+                </span>
+                <span className={`status-badge ${status}`}>
+                  {getStatusIcon(task)}
+                  {status.replace('-', ' ')}
+                </span>
+                {isOverdue(task.dueDate) && !task.completed && (
+                  <span className="overdue-badge">Overdue</span>
+                )}
+              </div>
+            </div>
+
+            <div className="detail-section">
+              <h4>Description</h4>
+              <p>{task.description || "No description provided"}</p>
+            </div>
+
+            <div className="details-grid">
+              <div className="detail-item">
+                <label>Due Date</label>
+                <p className={isOverdue(task.dueDate) && !task.completed ? "overdue" : ""}>
+                  {formatDate(task.dueDate)}
+                </p>
+              </div>
+              <div className="detail-item">
+                <label>Estimated Hours</label>
+                <p>{task.estimatedHours} hours</p>
+              </div>
+              <div className="detail-item">
+                <label>Task ID</label>
+                <p>#{task.id}</p>
+              </div>
+              <div className="detail-item">
+                <label>Status</label>
+                <p className={`status-text ${status}`}>
+                  {status.replace('-', ' ')}
+                </p>
+              </div>
+              <div className="detail-item full-width">
+                <label>Assigned To</label>
+                {/* UPDATED: Show employee details */}
+                {assignedEmployee ? (
+                  <div className="user-info">
+                    <div className="user-avatar">
+                      <FaUser />
+                    </div>
+                    <div>
+                      <strong>{assignedEmployee.name}</strong>
+                      <p>{assignedEmployee.position} • ID: {assignedEmployee.id}</p>
+                      <p>{assignedEmployee.email}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <p>Unassigned</p>
+                )}
+              </div>
+              <div className="detail-item">
+                <label>Started</label>
+                <p>{task.started ? 'Yes' : 'No'}</p>
+              </div>
+              <div className="detail-item">
+                <label>Completed</label>
+                <p>{task.completed ? 'Yes' : 'No'}</p>
+              </div>
             </div>
           </div>
 
-          <div className="detail-section">
-            <h4>Description</h4>
-            <p>{task.description || "No description provided"}</p>
-          </div>
-
-          <div className="details-grid">
-            <div className="detail-item">
-              <label>Due Date</label>
-              <p className={isOverdue(task.dueDate) && task.status !== TASK_STATUS.COMPLETED ? "overdue" : ""}>
-                {formatDate(task.dueDate)}
-              </p>
-            </div>
-            <div className="detail-item">
-              <label>Estimated Hours</label>
-              <p>{task.estimatedHours} hours</p>
-            </div>
-            <div className="detail-item">
-              <label>Task ID</label>
-              <p>#{task.id}</p>
-            </div>
-            <div className="detail-item">
-              <label>Status</label>
-              <p className={`status-text ${task.status?.toLowerCase()}`}>
-                {task.status?.replace('_', ' ')}
-              </p>
-            </div>
-            <div className="detail-item full-width">
-              <label>Assigned To</label>
-              <p>Employee #{task.assignedToId}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="modal-footer">
-          <button className="btn-primary" onClick={onClose}>
-            Close
-          </button>
-          {task.status !== TASK_STATUS.COMPLETED && (
+          <div className="modal-footer">
+            <button className="btn-primary" onClick={onClose}>
+              Close
+            </button>
             <div className="status-actions">
-              {task.status === TASK_STATUS.PENDING && (
-                <button 
-                  className="btn-start"
-                  onClick={() => {
-                    updateTaskStatus(task.id, TASK_STATUS.IN_PROGRESS);
-                    onClose();
-                  }}
-                >
-                  Start Task
-                </button>
+              {!task.completed && (
+                <>
+                  {!task.started && (
+                    <button 
+                      className="btn-start"
+                      onClick={() => {
+                        startTask(task.id);
+                        onClose();
+                      }}
+                    >
+                      Start Task
+                    </button>
+                  )}
+                  {task.started && (
+                    <button 
+                      className="btn-complete"
+                      onClick={() => {
+                        completeTask(task.id);
+                        onClose();
+                      }}
+                    >
+                      Mark Complete
+                    </button>
+                  )}
+                </>
               )}
-              {task.status === TASK_STATUS.IN_PROGRESS && (
+              {task.completed && (
                 <button 
-                  className="btn-complete"
+                  className="btn-reopen"
                   onClick={() => {
-                    updateTaskStatus(task.id, TASK_STATUS.COMPLETED);
+                    reopenTask(task.id);
                     onClose();
                   }}
                 >
-                  Mark Complete
+                  Reopen Task
                 </button>
               )}
             </div>
-          )}
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="task-manager">
@@ -586,9 +721,9 @@ function TaskManager() {
             onChange={(e) => setStatusFilter(e.target.value)}
           >
             <option value="all">All Status</option>
-            <option value={TASK_STATUS.PENDING}>Pending</option>
-            <option value={TASK_STATUS.IN_PROGRESS}>In Progress</option>
-            <option value={TASK_STATUS.COMPLETED}>Completed</option>
+            <option value="pending">Pending</option>
+            <option value="in-progress">In Progress</option>
+            <option value="completed">Completed</option>
           </select>
         </div>
         <div className="filter-group">

@@ -1,22 +1,21 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { FaTrash, FaEye, FaEdit, FaTimes, FaUsers, FaCalendar, FaUser, FaIdCard } from "react-icons/fa";
-import "./DepartmentList.css"; // Import CSS file
+import "./DepartmentList.css";
 
 function DepartmentList({ departments, onDepartmentDeleted, onEditDepartment }) {
-  // State for managing modals and selected department
   const [selectedDepartment, setSelectedDepartment] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState({ show: false, deptId: null });
 
-  // Function to delete department from API
+  // Function to delete department from API - FIXED
   const deleteDepartment = async (id) => {
     try {
       await axios.delete(`http://10.0.6.1:8080/departments/${id}`);
       onDepartmentDeleted(); // Refresh the list
     } catch (err) {
       console.error("Error deleting department:", err);
-      alert("Error deleting department");
+      alert("Error deleting department: " + (err.response?.data?.message || err.message));
     }
   };
 
@@ -34,13 +33,11 @@ function DepartmentList({ departments, onDepartmentDeleted, onEditDepartment }) 
 
   return (
     <div className="department-list">
-      {/* Header with title and department count */}
       <div className="list-header">
         <h2>Department Management</h2>
         <span className="department-count">{departments.length} departments</span>
       </div>
       
-      {/* Main table container */}
       <div className="table-container">
         <table className="modern-table">
           <thead>
@@ -52,28 +49,23 @@ function DepartmentList({ departments, onDepartmentDeleted, onEditDepartment }) 
             </tr>
           </thead>
           <tbody>
-            {/* Map through departments and create table rows */}
             {departments.map((dept) => (
               <tr key={dept.id} className="table-row">
-                {/* Department ID with icon */}
+                {/* FIXED: Use dept.id consistently */}
                 <td className="dept-id">
                   <FaIdCard className="icon-sm" />
-                  {dept.deptId || dept.id}
+                  {dept.id} {/* Changed from dept.deptId || dept.id */}
                 </td>
                 
-                {/* Department name */}
                 <td className="dept-name">{dept.name}</td>
                 
-                {/* Employee count with icon */}
                 <td className="employee-count">
                   <FaUsers className="icon-sm" />
                   {dept.employeeNames?.length || 0} employees
                 </td>
                 
-                {/* Action buttons */}
                 <td className="action-buttons">
                   <div className="action-buttons-container">
-                    {/* Edit button */}
                     <button
                       className="action-btn edit-btn"
                       onClick={() => onEditDepartment(dept)}
@@ -82,7 +74,6 @@ function DepartmentList({ departments, onDepartmentDeleted, onEditDepartment }) 
                       <FaEdit />
                     </button>
                     
-                    {/* View details button */}
                     <button
                       className="action-btn view-btn"
                       onClick={() => handleViewDepartment(dept)}
@@ -91,7 +82,7 @@ function DepartmentList({ departments, onDepartmentDeleted, onEditDepartment }) 
                       <FaEye />
                     </button>
                     
-                    {/* Delete button */}
+                    {/* FIXED: Use dept.id for deletion */}
                     <button
                       className="action-btn delete-btn"
                       onClick={() => setConfirmDelete({ show: true, deptId: dept.id })}
@@ -107,11 +98,10 @@ function DepartmentList({ departments, onDepartmentDeleted, onEditDepartment }) 
         </table>
       </div>
 
-      {/* Department Details Modal - Shows when isModalOpen is true */}
+      {/* Department Details Modal - FIXED ID display */}
       {isModalOpen && selectedDepartment && (
         <div className="modal-overlay">
           <div className="modal-content modern-modal">
-            {/* Modal header with title and close button */}
             <div className="modal-header">
               <div className="modal-title">
                 <h3>Department Details</h3>
@@ -122,21 +112,19 @@ function DepartmentList({ departments, onDepartmentDeleted, onEditDepartment }) 
               </button>
             </div>
 
-            {/* Modal body with department information */}
             <div className="modal-body">
               <div className="details-grid">
-                {/* Department ID */}
+                {/* FIXED: Use selectedDepartment.id consistently */}
                 <div className="detail-item">
                   <div className="detail-icon">
                     <FaIdCard />
                   </div>
                   <div className="detail-content">
                     <label>Department ID</label>
-                    <span>{selectedDepartment.deptId || selectedDepartment.id}</span>
+                    <span>{selectedDepartment.id}</span> {/* Changed from deptId || id */}
                   </div>
                 </div>
 
-                {/* Department Name */}
                 <div className="detail-item">
                   <div className="detail-icon">
                     <FaUser />
@@ -147,7 +135,6 @@ function DepartmentList({ departments, onDepartmentDeleted, onEditDepartment }) 
                   </div>
                 </div>
 
-                {/* Department Description - Only shows if exists */}
                 {selectedDepartment.description && (
                   <div className="detail-item full-width">
                     <div className="detail-icon">
@@ -160,7 +147,6 @@ function DepartmentList({ departments, onDepartmentDeleted, onEditDepartment }) 
                   </div>
                 )}
 
-                {/* Created By */}
                 <div className="detail-item">
                   <div className="detail-icon">
                     <FaUser />
@@ -171,7 +157,6 @@ function DepartmentList({ departments, onDepartmentDeleted, onEditDepartment }) 
                   </div>
                 </div>
 
-                {/* Created Date - Only shows if exists */}
                 {selectedDepartment.createdDate && (
                   <div className="detail-item">
                     <div className="detail-icon">
@@ -184,7 +169,6 @@ function DepartmentList({ departments, onDepartmentDeleted, onEditDepartment }) 
                   </div>
                 )}
 
-                {/* Employees List */}
                 <div className="detail-item full-width">
                   <div className="detail-icon">
                     <FaUsers />
@@ -192,7 +176,6 @@ function DepartmentList({ departments, onDepartmentDeleted, onEditDepartment }) 
                   <div className="detail-content">
                     <label>Employees ({selectedDepartment.employeeNames?.length || 0})</label>
                     <div className="employees-list">
-                      {/* Show employee names if they exist */}
                       {selectedDepartment.employeeNames && selectedDepartment.employeeNames.length > 0 ? (
                         selectedDepartment.employeeNames.map((employee, index) => (
                           <span key={index} className="employee-tag">
@@ -200,7 +183,6 @@ function DepartmentList({ departments, onDepartmentDeleted, onEditDepartment }) 
                           </span>
                         ))
                       ) : (
-                        /* Show message if no employees */
                         <span className="no-employees">No employees assigned</span>
                       )}
                     </div>
@@ -209,7 +191,6 @@ function DepartmentList({ departments, onDepartmentDeleted, onEditDepartment }) 
               </div>
             </div>
 
-            {/* Modal footer with close button */}
             <div className="modal-footer">
               <button className="btn-primary" onClick={closeModal}>
                 Close
@@ -219,11 +200,10 @@ function DepartmentList({ departments, onDepartmentDeleted, onEditDepartment }) 
         </div>
       )}
 
-      {/* Delete Confirmation Modal - Shows when confirmDelete.show is true */}
+      {/* Delete Confirmation Modal - No changes needed here */}
       {confirmDelete.show && (
         <div className="modal-overlay">
           <div className="modal-content modern-modal delete-modal">
-            {/* Delete modal header */}
             <div className="modal-header">
               <h3>Confirm Deletion</h3>
               <button
@@ -234,7 +214,6 @@ function DepartmentList({ departments, onDepartmentDeleted, onEditDepartment }) 
               </button>
             </div>
 
-            {/* Delete confirmation content */}
             <div className="modal-body">
               <div className="warning-icon">
                 <FaTrash />
@@ -243,7 +222,6 @@ function DepartmentList({ departments, onDepartmentDeleted, onEditDepartment }) 
               <p className="warning-text">This action cannot be undone.</p>
             </div>
 
-            {/* Delete action buttons */}
             <div className="modal-footer">
               <button
                 className="btn-danger"

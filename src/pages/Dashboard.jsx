@@ -81,8 +81,11 @@ function Dashboard({ user, onLogout }) {
       setTasks(tasksData);
 
       const activeCount = employeesData.filter(emp => emp.active).length;
-      const pendingTasks = tasksData.filter(task => task.status === 'PENDING').length;
-      const completedTasks = tasksData.filter(task => task.status === 'COMPLETED').length;
+      
+      // UPDATED: Calculate task statistics based on boolean fields
+      const pendingTasks = tasksData.filter(task => !task.started && !task.completed).length;
+      const inProgressTasks = tasksData.filter(task => task.started && !task.completed).length;
+      const completedTasks = tasksData.filter(task => task.completed).length;
       
       setStats({
         totalEmployees: employeesData.length,
@@ -91,6 +94,7 @@ function Dashboard({ user, onLogout }) {
         inactiveEmployees: employeesData.length - activeCount,
         totalTasks: tasksData.length,
         pendingTasks: pendingTasks,
+        inProgressTasks: inProgressTasks, // Added this for better tracking
         completedTasks: completedTasks
       });
     } catch (error) {
@@ -199,7 +203,9 @@ function Dashboard({ user, onLogout }) {
               </div>
               <div className="activity-content">
                 <p><strong>New Task:</strong> {task.title}</p>
-                <span className="activity-time">Assigned to {task.assignedTo?.name}</span>
+                <span className="activity-time">
+                  {task.completed ? 'Completed' : task.started ? 'In Progress' : 'Pending'}
+                </span>
               </div>
             </div>
           ))}
@@ -218,6 +224,83 @@ function Dashboard({ user, onLogout }) {
       </div>
     );
   };
+
+  // UPDATED: STANDARDIZED TASK OVERVIEW COMPONENT
+  const TaskOverview = () => (
+    <div className="task-overview">
+      <div className="task-overview-header">
+        <h3>Task Overview</h3>
+        <span className="task-summary">
+          {stats.totalTasks} Total Tasks • {stats.completedTasks} Completed
+        </span>
+      </div>
+      
+      <div className="task-progress">
+        <div className="progress-bar">
+          <div 
+            className="progress-fill" 
+            style={{ 
+              width: stats.totalTasks > 0 ? `${(stats.completedTasks / stats.totalTasks) * 100}%` : '0%' 
+            }}
+          ></div>
+        </div>
+        <div className="progress-stats">
+          <span className="progress-text">
+            Completion Rate: {stats.totalTasks > 0 ? Math.round((stats.completedTasks / stats.totalTasks) * 100) : 0}%
+          </span>
+        </div>
+      </div>
+
+      <div className="task-quick-stats">
+        <div className="quick-stat">
+          <div className="stat-icon total">
+            <FaTasks />
+          </div>
+          <div className="stat-info">
+            <span className="stat-value">{stats.totalTasks}</span>
+            <span className="stat-label">Total</span>
+          </div>
+        </div>
+        
+        <div className="quick-stat">
+          <div className="stat-icon pending">
+            <FaTasks />
+          </div>
+          <div className="stat-info">
+            <span className="stat-value">{stats.pendingTasks}</span>
+            <span className="stat-label">Pending</span>
+          </div>
+        </div>
+        
+        <div className="quick-stat">
+          <div className="stat-icon in-progress">
+            <FaTasks />
+          </div>
+          <div className="stat-info">
+            <span className="stat-value">{stats.inProgressTasks || 0}</span>
+            <span className="stat-label">In Progress</span>
+          </div>
+        </div>
+        
+        <div className="quick-stat">
+          <div className="stat-icon completed">
+            <FaTasks />
+          </div>
+          <div className="stat-info">
+            <span className="stat-value">{stats.completedTasks}</span>
+            <span className="stat-label">Completed</span>
+          </div>
+        </div>
+      </div>
+
+      <button 
+        className="btn-primary full-width"
+        onClick={() => setActiveTab("tasks")}
+      >
+        <FaTasks /> Open Task Manager
+      </button>
+    </div>
+  );
 
   // Render active component based on tab
   const renderActiveComponent = () => {
@@ -290,29 +373,8 @@ function Dashboard({ user, onLogout }) {
             </div>
 
             <div className="dashboard-grid">
-              <div className="task-overview">
-                <h3>Task Overview</h3>
-                <div className="task-stats">
-                  <div className="task-stat">
-                    <span className="stat-number">{stats.totalTasks}</span>
-                    <span className="stat-label">Total Tasks</span>
-                  </div>
-                  <div className="task-stat">
-                    <span className="stat-number pending">{stats.pendingTasks}</span>
-                    <span className="stat-label">Pending</span>
-                  </div>
-                  <div className="task-stat">
-                    <span className="stat-number completed">{stats.completedTasks}</span>
-                    <span className="stat-label">Completed</span>
-                  </div>
-                </div>
-                <button 
-                  className="btn-primary"
-                  onClick={() => setActiveTab("tasks")}
-                >
-                  <FaTasks /> Manage Tasks
-                </button>
-              </div>
+              {/* UPDATED: STANDARDIZED TASK OVERVIEW */}
+              <TaskOverview />
 
               <div className="chat-section">
                 <ChatSystem />
