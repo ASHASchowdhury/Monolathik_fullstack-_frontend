@@ -6,7 +6,6 @@ import {
   FaSearch,
   FaFilter,
   FaUserCheck,
-  FaUserPlus,
   FaClock,
   FaExclamationTriangle,
   FaCheckCircle,
@@ -16,8 +15,7 @@ import {
   FaEye,
   FaCalendarAlt,
   FaUser,
-  FaFlag,
-  FaChartBar
+  FaFlag
 } from "react-icons/fa";
 import "./TaskManager.css";
 
@@ -36,7 +34,6 @@ function TaskManager() {
 
   const API_BASE = "http://localhost:8080";
 
-  // Task priority options based on your API
   const TASK_PRIORITY = {
     LOW: "LOW",
     MEDIUM: "MEDIUM",
@@ -44,37 +41,49 @@ function TaskManager() {
     URGENT: "URGENT"
   };
 
-  // Fetch tasks and employees
+  // FIXED: Proper authentication headers
+  const getAuthConfig = () => {
+    try {
+      const userData = localStorage.getItem('user');
+      if (!userData) {
+        console.warn('No user data found in localStorage');
+        return { headers: {} };
+      }
+      
+      const user = JSON.parse(userData);
+      return {
+        headers: {
+          'X-Username': user.username || '',
+          'X-Role': user.role || 'USER'
+        }
+      };
+    } catch (error) {
+      console.error('Error getting auth config:', error);
+      return { headers: {} };
+    }
+  };
+
   useEffect(() => {
     fetchTasks();
     fetchEmployees();
   }, [activeView]);
-
-  const getAuthConfig = () => {
-    const user = JSON.parse(localStorage.getItem('user'));
-    return {
-      auth: {
-        username: user?.username || 'hr',
-        password: 'hr123'
-      }
-    };
-  };
 
   const fetchTasks = async () => {
     try {
       setLoading(true);
       setError("");
       
-      let endpoint = "/tasks";
-      if (activeView === "my-tasks") endpoint = "/tasks/assignee/30"; // Using sample employee ID
-      if (activeView === "created-by-me") endpoint = "/tasks"; // Adjust based on your API
-
-      const response = await axios.get(`${API_BASE}${endpoint}`, getAuthConfig());
+      const config = getAuthConfig();
+      const response = await axios.get(`${API_BASE}/tasks`, config);
       console.log("Tasks response:", response.data);
       setTasks(response.data || []);
     } catch (err) {
       console.error("Error fetching tasks:", err);
-      setError("Failed to load tasks. " + (err.response?.data?.message || ""));
+      if (err.response?.status === 403) {
+        setError("Access denied: You don't have permission to view tasks.");
+      } else {
+        setError("Failed to load tasks. " + (err.response?.data?.message || ""));
+      }
       setTasks([]);
     } finally {
       setLoading(false);
@@ -83,29 +92,30 @@ function TaskManager() {
 
   const fetchEmployees = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/employees`, getAuthConfig());
+      const config = getAuthConfig();
+      const response = await axios.get(`${API_BASE}/employees`, config);
       console.log("Available employees:", response.data);
       setEmployees(response.data || []);
     } catch (err) {
       console.error("Error fetching employees:", err);
+      if (err.response?.status === 403) {
+        console.log("No permission to view employees");
+      }
       setEmployees([]);
     }
   };
 
-  // NEW: Get employee name by ID
   const getEmployeeName = (employeeId) => {
     if (!employeeId) return "Unassigned";
     const employee = employees.find(emp => emp.id === employeeId);
     return employee ? employee.name : `Employee #${employeeId}`;
   };
 
-  // NEW: Get employee details by ID
   const getEmployeeDetails = (employeeId) => {
     if (!employeeId) return null;
     return employees.find(emp => emp.id === employeeId);
   };
 
-  // Filter tasks based on search and filters
   const filteredTasks = tasks.filter(task => {
     const matchesSearch = task.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          task.description?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -118,12 +128,12 @@ function TaskManager() {
     return matchesSearch && matchesStatus && matchesPriority;
   });
 
-  // Create new task
   const createTask = async (taskData) => {
     try {
       console.log("Creating task:", taskData);
+      const config = getAuthConfig();
       
-      const response = await axios.post(`${API_BASE}/tasks`, taskData, getAuthConfig());
+      const response = await axios.post(`${API_BASE}/tasks`, taskData, config);
       console.log("Task created:", response.data);
       
       setShowTaskForm(false);
@@ -131,31 +141,39 @@ function TaskManager() {
       setError("");
     } catch (err) {
       console.error("Error creating task:", err);
-      setError(err.response?.data?.message || "Failed to create task.");
+      if (err.response?.status === 403) {
+        setError("Access denied: You don't have permission to create tasks.");
+      } else {
+        setError(err.response?.data?.message || "Failed to create task.");
+      }
     }
   };
 
-  // Update task
   const updateTask = async (taskId, taskData) => {
     try {
-      await axios.put(`${API_BASE}/tasks/${taskId}`, taskData, getAuthConfig());
+      const config = getAuthConfig();
+      await axios.put(`${API_BASE}/tasks/${taskId}`, taskData, config);
       setEditingTask(null);
       fetchTasks();
       setError("");
     } catch (err) {
       console.error("Error updating task:", err);
-      setError(err.response?.data?.message || "Failed to update task.");
+      if (err.response?.status === 403) {
+        setError("Access denied: You don't have permission to update tasks.");
+      } else {
+        setError(err.response?.data?.message || "Failed to update task.");
+      }
     }
   };
 
-  // Start task - set started to true
   const startTask = async (taskId) => {
     try {
+      const config = getAuthConfig();
       const taskData = {
         started: true,
         completed: false
       };
-      await axios.put(`${API_BASE}/tasks/${taskId}`, taskData, getAuthConfig());
+      await axios.put(`${API_BASE}/tasks/${taskId}`, taskData, config);
       fetchTasks();
       setError("");
     } catch (err) {
@@ -164,14 +182,14 @@ function TaskManager() {
     }
   };
 
-  // Complete task - set completed to true
   const completeTask = async (taskId) => {
     try {
+      const config = getAuthConfig();
       const taskData = {
         started: true,
         completed: true
       };
-      await axios.put(`${API_BASE}/tasks/${taskId}`, taskData, getAuthConfig());
+      await axios.put(`${API_BASE}/tasks/${taskId}`, taskData, config);
       fetchTasks();
       setError("");
     } catch (err) {
@@ -180,14 +198,14 @@ function TaskManager() {
     }
   };
 
-  // Reopen task - set completed to false
   const reopenTask = async (taskId) => {
     try {
+      const config = getAuthConfig();
       const taskData = {
         started: true,
         completed: false
       };
-      await axios.put(`${API_BASE}/tasks/${taskId}`, taskData, getAuthConfig());
+      await axios.put(`${API_BASE}/tasks/${taskId}`, taskData, config);
       fetchTasks();
       setError("");
     } catch (err) {
@@ -196,26 +214,28 @@ function TaskManager() {
     }
   };
 
-  // Delete task
   const deleteTask = async (taskId) => {
     try {
-      await axios.delete(`${API_BASE}/tasks/${taskId}`, getAuthConfig());
+      const config = getAuthConfig();
+      await axios.delete(`${API_BASE}/tasks/${taskId}`, config);
       fetchTasks();
       setError("");
     } catch (err) {
       console.error("Error deleting task:", err);
-      setError(err.response?.data?.message || "Failed to delete task.");
+      if (err.response?.status === 403) {
+        setError("Access denied: You don't have permission to delete tasks.");
+      } else {
+        setError(err.response?.data?.message || "Failed to delete task.");
+      }
     }
   };
 
-  // Get status based on started and completed booleans
   const getTaskStatus = (task) => {
     if (task.completed) return "completed";
     if (task.started) return "in-progress";
     return "pending";
   };
 
-  // Get status icon and color
   const getStatusIcon = (task) => {
     const status = getTaskStatus(task);
     switch (status) {
@@ -230,7 +250,6 @@ function TaskManager() {
     }
   };
 
-  // Get priority icon and color
   const getPriorityIcon = (priority) => {
     switch (priority) {
       case TASK_PRIORITY.LOW:
@@ -246,7 +265,6 @@ function TaskManager() {
     }
   };
 
-  // Format date for display
   const formatDate = (dateString) => {
     if (!dateString) return 'Not set';
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -256,13 +274,11 @@ function TaskManager() {
     });
   };
 
-  // Check if task is overdue
   const isOverdue = (dueDate) => {
     if (!dueDate) return false;
     return new Date(dueDate) < new Date();
   };
 
-  // Task Card Component
   const TaskCard = ({ task }) => {
     const status = getTaskStatus(task);
     
@@ -326,7 +342,6 @@ function TaskManager() {
             </div>
             <div className="detail-item">
               <FaUser className="detail-icon" />
-              {/* UPDATED: Show employee name instead of ID */}
               <span>Assigned to: {getEmployeeName(task.assignedToId)}</span>
             </div>
           </div>
@@ -371,7 +386,6 @@ function TaskManager() {
     );
   };
 
-  // Task Form Component
   const TaskForm = ({ task, onSave, onCancel }) => {
     const [formData, setFormData] = useState({
       title: task?.title || "",
@@ -387,7 +401,6 @@ function TaskManager() {
     const handleSubmit = (e) => {
       e.preventDefault();
       
-      // Prepare data for backend
       const submitData = {
         title: formData.title,
         description: formData.description,
@@ -478,7 +491,7 @@ function TaskManager() {
                   <option value="">Select Employee</option>
                   {employees.map(emp => (
                     <option key={emp.id} value={emp.id}>
-                      {emp.name} - {emp.position} (ID: {emp.id})
+                      {emp.name} (ID: {emp.id})
                     </option>
                   ))}
                 </select>
@@ -524,7 +537,6 @@ function TaskManager() {
     );
   };
 
-  // Task Details Modal
   const TaskDetailsModal = ({ task, onClose }) => {
     const status = getTaskStatus(task);
     const assignedEmployee = getEmployeeDetails(task.assignedToId);
@@ -583,7 +595,6 @@ function TaskManager() {
               </div>
               <div className="detail-item full-width">
                 <label>Assigned To</label>
-                {/* UPDATED: Show employee details */}
                 {assignedEmployee ? (
                   <div className="user-info">
                     <div className="user-avatar">
@@ -591,7 +602,7 @@ function TaskManager() {
                     </div>
                     <div>
                       <strong>{assignedEmployee.name}</strong>
-                      <p>{assignedEmployee.position} • ID: {assignedEmployee.id}</p>
+                      <p>ID: {assignedEmployee.id}</p>
                       <p>{assignedEmployee.email}</p>
                     </div>
                   </div>
@@ -661,7 +672,6 @@ function TaskManager() {
 
   return (
     <div className="task-manager">
-      {/* Header */}
       <div className="task-header">
         <div className="header-content">
           <div className="header-title">
@@ -681,7 +691,6 @@ function TaskManager() {
         </div>
       </div>
 
-      {/* Navigation Tabs */}
       <div className="task-nav">
         <button
           className={`nav-tab ${activeView === "all-tasks" ? "active" : ""}`}
@@ -695,15 +704,8 @@ function TaskManager() {
         >
           <FaUserCheck /> My Tasks
         </button>
-        <button
-          className={`nav-tab ${activeView === "priority" ? "active" : ""}`}
-          onClick={() => setActiveView("priority")}
-        >
-          <FaFlag /> By Priority
-        </button>
       </div>
 
-      {/* Filters and Search */}
       <div className="task-filters">
         <div className="search-box">
           <FaSearch className="search-icon" />
@@ -741,7 +743,6 @@ function TaskManager() {
         </div>
       </div>
 
-      {/* Error Message */}
       {error && (
         <div className="error-banner">
           <FaExclamationTriangle />
@@ -749,7 +750,6 @@ function TaskManager() {
         </div>
       )}
 
-      {/* Tasks Grid */}
       <div className="tasks-grid">
         {loading ? (
           <div className="loading-state">
@@ -769,7 +769,6 @@ function TaskManager() {
         )}
       </div>
 
-      {/* Modals */}
       {showTaskForm && (
         <TaskForm
           task={null}

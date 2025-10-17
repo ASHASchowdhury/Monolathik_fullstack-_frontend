@@ -5,21 +5,22 @@ import './App.css';
 
 function App() {
   const [user, setUser] = useState(null);
-  const [showLogin, setShowLogin] = useState(true);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
     if (savedUser) {
-      const userData = JSON.parse(savedUser);
-      // Check if user has valid role when loading from localStorage
-      const allowedRoles = ["HR", "PM", "CTO", "DIRECTOR"];
-      if (allowedRoles.includes(userData.role?.toUpperCase())) {
-        setUser(userData);
-      } else {
-        // Clear invalid user data
+      try {
+        const userData = JSON.parse(savedUser);
+        const allowedRoles = ["HR", "PROJECT_MANAGER", "CTO", "DIRECTOR", "USER"];
+        if (allowedRoles.includes(userData.role?.toUpperCase())) {
+          setUser(userData);
+        } else {
+          localStorage.removeItem('user');
+        }
+      } catch (error) {
+        console.error('Error parsing user data:', error);
         localStorage.removeItem('user');
-        localStorage.removeItem('token');
       }
     }
     setLoading(false);
@@ -31,7 +32,6 @@ function App() {
 
   const handleLogout = () => {
     localStorage.removeItem('user');
-    localStorage.removeItem('token');
     setUser(null);
   };
 
@@ -51,13 +51,7 @@ function App() {
   }
 
   if (!user) {
-    return (
-      <Login 
-        onLogin={handleLogin} 
-        isLogin={showLogin}
-        onToggleMode={() => setShowLogin(!showLogin)}
-      />
-    );
+    return <Login onLogin={handleLogin} />;
   }
 
   return <Dashboard user={user} onLogout={handleLogout} />;

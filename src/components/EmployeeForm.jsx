@@ -14,9 +14,6 @@ import {
   FaCalendarAlt
 } from "react-icons/fa";
 
-const username = 'admin';
-const password = 'admin123';
-
 function EmployeeForm({ onEmployeeAdded, selectedEmployee, onUpdateComplete }) {
   const [employee, setEmployee] = useState({
     id: null,
@@ -38,11 +35,58 @@ function EmployeeForm({ onEmployeeAdded, selectedEmployee, onUpdateComplete }) {
 
   const bloodGroups = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
 
+  // FIXED: Proper authentication headers with correct role mapping
+  const getAuthConfig = () => {
+    try {
+      const userData = localStorage.getItem('user');
+      if (!userData) {
+        console.warn('No user data found in localStorage');
+        // For development, you might want to set default values
+        return {
+          headers: {
+            'X-Username': 'demo-user',
+            'X-Role': 'HR' // or 'DIRECTOR', 'CTO' based on what you need
+          }
+        };
+      }
+      
+      const user = JSON.parse(userData);
+      
+      // Map frontend roles to backend expected roles
+      const roleMapping = {
+        'admin': 'HR',
+        'manager': 'PROJECT_MANAGER', 
+        'user': 'USER',
+        'hr': 'HR',
+        'director': 'DIRECTOR',
+        'cto': 'CTO'
+      };
+      
+      const backendRole = roleMapping[user.role?.toLowerCase()] || 'USER';
+      
+      return {
+        headers: {
+          'X-Username': user.username || user.email || 'unknown-user',
+          'X-Role': backendRole,
+          'Content-Type': 'application/json'
+        }
+      };
+    } catch (error) {
+      console.error('Error getting auth config:', error);
+      // Fallback for development
+      return {
+        headers: {
+          'X-Username': 'fallback-user',
+          'X-Role': 'HR', // Change this to test different roles
+          'Content-Type': 'application/json'
+        }
+      };
+    }
+  };
+
   useEffect(() => {
     axios
-      .get("http://10.0.6.1:8080/departments", {
-        auth: { username, password }
-      })
+      .get("http://localhost:8080/departments", getAuthConfig())
       .then((res) => {
         setDepartments(res.data || []);
         setDepartmentsLoading(false);
@@ -111,19 +155,18 @@ function EmployeeForm({ onEmployeeAdded, selectedEmployee, onUpdateComplete }) {
     setIsLoading(true);
     
     try {
+      const config = getAuthConfig();
+      console.log('Sending request with headers:', config.headers);
+      
       if (employee.id) {
-        await axios.put(`http://10.0.6.1:8080/employees/${employee.id}`, employee, {
-          auth: { username, password }
-        });
+        await axios.put(`http://localhost:8080/employees/${employee.id}`, employee, config);
         setModalMessage("Employee updated successfully!");
         setIsModalOpen(true);
         if (onUpdateComplete) {
           onUpdateComplete();
         }
       } else {
-        await axios.post("http://10.0.6.1:8080/employees", employee, {
-          auth: { username, password }
-        });
+        await axios.post("http://localhost:8080/employees", employee, config);
         setModalMessage("Employee added successfully!");
         setIsModalOpen(true);
         if (onEmployeeAdded) {
@@ -133,7 +176,11 @@ function EmployeeForm({ onEmployeeAdded, selectedEmployee, onUpdateComplete }) {
       resetForm();
     } catch (err) {
       console.error("Error saving employee:", err);
-      setModalMessage("Error saving employee: " + (err.response?.data?.message || err.message));
+      if (err.response?.status === 403) {
+        setModalMessage("Access denied: You don't have permission to perform this action.");
+      } else {
+        setModalMessage("Error saving employee: " + (err.response?.data?.message || err.message));
+      }
       setIsModalOpen(true);
     } finally {
       setIsLoading(false);

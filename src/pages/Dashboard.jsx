@@ -5,7 +5,6 @@ import {
   FaUsers,
   FaBuilding,
   FaUserCheck,
-  FaComments,
   FaBars,
   FaTimes,
   FaChartLine,
@@ -22,6 +21,7 @@ import EmployeeList from "../components/EmployeeList";
 import DepartmentForm from "../components/DepartmentFrom";
 import DepartmentList from "../components/DepartmentList";
 import TaskManager from "../components/TaskManager";
+import AIChat from '../components/AIChat';
 import "../styles/Dashboard.css";
 
 function Dashboard({ user, onLogout }) {
@@ -44,11 +44,34 @@ function Dashboard({ user, onLogout }) {
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState("");
 
-  // API Configuration
   const API_BASE = "http://localhost:8080";
 
-  // Fetch dashboard data on component mount
+  // FIXED: Proper authentication headers
+  const getAuthConfig = () => {
+    try {
+      const userData = localStorage.getItem('user');
+      if (!userData) {
+        console.warn('No user data found in localStorage');
+        return { headers: {} };
+      }
+      
+      const user = JSON.parse(userData);
+      console.log('Auth headers - User:', user);
+      
+      return {
+        headers: {
+          'X-Username': user.username || '',
+          'X-Role': user.role || 'USER'
+        }
+      };
+    } catch (error) {
+      console.error('Error getting auth config:', error);
+      return { headers: {} };
+    }
+  };
+
   useEffect(() => {
+    console.log("Dashboard mounted, user:", user);
     fetchDashboardData();
   }, []);
 
@@ -57,32 +80,39 @@ function Dashboard({ user, onLogout }) {
       setLoading(true);
       setApiError("");
       
-      // Use the logged-in user's credentials
-      const currentUser = JSON.parse(localStorage.getItem('user'));
-      const config = {
-        auth: {
-          username: currentUser?.username || 'hr',
-          password: 'hr123'
-        }
-      };
+      const config = getAuthConfig();
+      console.log("Auth config for API calls:", config);
 
       const [empRes, deptRes, tasksRes] = await Promise.all([
-        axios.get(`${API_BASE}/employees`, config),
-        axios.get(`${API_BASE}/departments`, config),
-        axios.get(`${API_BASE}/tasks`, config).catch(() => ({ data: [] })) // Tasks might not be implemented yet
+        axios.get(`${API_BASE}/employees`, config).catch(err => {
+          console.error("Error fetching employees:", err);
+          return { data: [] };
+        }),
+        axios.get(`${API_BASE}/departments`, config).catch(err => {
+          console.error("Error fetching departments:", err);
+          return { data: [] };
+        }),
+        axios.get(`${API_BASE}/tasks`, config).catch(err => {
+          console.error("Error fetching tasks:", err);
+          return { data: [] };
+        })
       ]);
 
       const employeesData = empRes.data || [];
       const departmentsData = deptRes.data || [];
       const tasksData = tasksRes.data || [];
 
+      console.log("Fetched data:", {
+        employees: employeesData.length,
+        departments: departmentsData.length,
+        tasks: tasksData.length
+      });
+
       setEmployees(employeesData);
       setDepartments(departmentsData);
       setTasks(tasksData);
 
       const activeCount = employeesData.filter(emp => emp.active).length;
-      
-      // UPDATED: Calculate task statistics based on boolean fields
       const pendingTasks = tasksData.filter(task => !task.started && !task.completed).length;
       const inProgressTasks = tasksData.filter(task => task.started && !task.completed).length;
       const completedTasks = tasksData.filter(task => task.completed).length;
@@ -94,16 +124,24 @@ function Dashboard({ user, onLogout }) {
         inactiveEmployees: employeesData.length - activeCount,
         totalTasks: tasksData.length,
         pendingTasks: pendingTasks,
-        inProgressTasks: inProgressTasks, // Added this for better tracking
+        inProgressTasks: inProgressTasks,
         completedTasks: completedTasks
       });
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
-      if (error.response?.status === 401) {
+      console.error("Error response:", error.response);
+      
+      if (error.response?.status === 403) {
+        setApiError(`Access denied: You don't have permission to view this data. Your role: ${user?.role}`);
+      } else if (error.response?.status === 401) {
         setApiError("Authentication failed. Please login again.");
+        onLogout();
+      } else if (error.code === 'ERR_NETWORK') {
+        setApiError("Cannot connect to server. Please check if the backend is running.");
       } else {
         setApiError("Failed to load dashboard data. Please check your connection.");
       }
+      
       setEmployees([]);
       setDepartments([]);
       setTasks([]);
@@ -140,36 +178,6 @@ function Dashboard({ user, onLogout }) {
     setActiveTab("departments");
   };
 
-  // Chat System Component
-  const ChatSystem = () => (
-    <div className="chat-system">
-      <div className="chat-header">
-        <h3>Team Chat</h3>
-        <span className="online-indicator">• Online</span>
-      </div>
-      <div className="chat-messages">
-        <div className="message received">
-          <div className="message-avatar">HR</div>
-          <div className="message-content">
-            <p>Welcome to the team dashboard! How can I help?</p>
-            <span className="message-time">10:30 AM</span>
-          </div>
-        </div>
-        <div className="message sent">
-          <div className="message-content">
-            <p>Looking for department reports</p>
-            <span className="message-time">10:32 AM</span>
-          </div>
-        </div>
-      </div>
-      <div className="chat-input">
-        <input type="text" placeholder="Type a message..." />
-        <button className="send-btn">Send</button>
-      </div>
-    </div>
-  );
-
-  // Dashboard Stats Cards
   const StatCard = ({ title, value, icon, color, change, subtitle }) => (
     <div className={`stat-card ${color}`}>
       <div className="stat-icon">{icon}</div>
@@ -187,7 +195,6 @@ function Dashboard({ user, onLogout }) {
     </div>
   );
 
-  // Recent Activity Component
   const RecentActivity = () => {
     const recentTasks = tasks.slice(0, 3);
     const recentEmployees = employees.slice(0, 2);
@@ -225,7 +232,6 @@ function Dashboard({ user, onLogout }) {
     );
   };
 
-  // UPDATED: STANDARDIZED TASK OVERVIEW COMPONENT
   const TaskOverview = () => (
     <div className="task-overview">
       <div className="task-overview-header">
@@ -302,7 +308,6 @@ function Dashboard({ user, onLogout }) {
     </div>
   );
 
-  // Render active component based on tab
   const renderActiveComponent = () => {
     switch (activeTab) {
       case "dashboard":
@@ -372,14 +377,7 @@ function Dashboard({ user, onLogout }) {
               <RecentActivity />
             </div>
 
-            <div className="dashboard-grid">
-              {/* UPDATED: STANDARDIZED TASK OVERVIEW */}
-              <TaskOverview />
-
-              <div className="chat-section">
-                <ChatSystem />
-              </div>
-            </div>
+            <TaskOverview />
           </div>
         );
 
@@ -464,16 +462,6 @@ function Dashboard({ user, onLogout }) {
           </div>
         );
 
-      case "chat":
-        return (
-          <div className="tab-content">
-            <div className="content-header">
-              <h2>Team Chat</h2>
-            </div>
-            <ChatSystem />
-          </div>
-        );
-
       default:
         return null;
     }
@@ -538,14 +526,6 @@ function Dashboard({ user, onLogout }) {
             <span className="nav-badge">{stats.activeEmployees}</span>
           </button>
 
-          <button
-            className={`nav-item ${activeTab === "chat" ? "active" : ""}`}
-            onClick={() => setActiveTab("chat")}
-          >
-            <FaComments />
-            <span>Team Chat</span>
-          </button>
-
           <div className="nav-divider"></div>
 
           <button className="nav-item logout-btn" onClick={onLogout}>
@@ -555,7 +535,7 @@ function Dashboard({ user, onLogout }) {
         </nav>
       </div>
 
-      {/* Main Content */}
+      {/* Main Content Area */}
       <div className="dashboard-main">
         <header className="dashboard-header">
           <div className="header-left">
@@ -565,7 +545,6 @@ function Dashboard({ user, onLogout }) {
               {activeTab === "departments" && "Department Management"}
               {activeTab === "tasks" && "Task Management"}
               {activeTab === "active-employees" && "Active Employees"}
-              {activeTab === "chat" && "Team Chat"}
             </h1>
             <p className="header-subtitle">
               {activeTab === "dashboard" && "Welcome to your HR Dashboard"}
@@ -573,7 +552,6 @@ function Dashboard({ user, onLogout }) {
               {activeTab === "departments" && "Organize your departments"}
               {activeTab === "tasks" && "Assign and track tasks"}
               {activeTab === "active-employees" && "Currently active team members"}
-              {activeTab === "chat" && "Communicate with your team"}
             </p>
           </div>
           <div className="header-right">
@@ -590,7 +568,6 @@ function Dashboard({ user, onLogout }) {
         </header>
 
         <main className="dashboard-content-area">
-          {/* Global Back Button - Only show when not on dashboard */}
           {activeTab !== "dashboard" && (
             <div className="global-back-button">
               <button 
@@ -608,6 +585,7 @@ function Dashboard({ user, onLogout }) {
               {apiError}
             </div>
           )}
+          
           {loading ? (
             <div className="loading-state">
               <div className="loading-spinner"></div>
@@ -618,6 +596,9 @@ function Dashboard({ user, onLogout }) {
           )}
         </main>
       </div>
+
+      {/* AI Chat Component - ADDED HERE */}
+      <AIChat />
     </div>
   );
 }

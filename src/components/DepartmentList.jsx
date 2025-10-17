@@ -8,24 +8,48 @@ function DepartmentList({ departments, onDepartmentDeleted, onEditDepartment }) 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState({ show: false, deptId: null });
 
-  // Function to delete department from API - FIXED
-  const deleteDepartment = async (id) => {
+  // FIXED: Proper authentication headers
+  const getAuthConfig = () => {
     try {
-      await axios.delete(`http://10.0.6.1:8080/departments/${id}`);
-      onDepartmentDeleted(); // Refresh the list
-    } catch (err) {
-      console.error("Error deleting department:", err);
-      alert("Error deleting department: " + (err.response?.data?.message || err.message));
+      const userData = localStorage.getItem('user');
+      if (!userData) {
+        console.warn('No user data found in localStorage');
+        return { headers: {} };
+      }
+      
+      const user = JSON.parse(userData);
+      return {
+        headers: {
+          'X-Username': user.username || '',
+          'X-Role': user.role || 'USER'
+        }
+      };
+    } catch (error) {
+      console.error('Error getting auth config:', error);
+      return { headers: {} };
     }
   };
 
-  // Open department details modal
+  const deleteDepartment = async (id) => {
+    try {
+      const config = getAuthConfig();
+      await axios.delete(`http://localhost:8080/departments/${id}`, config);
+      onDepartmentDeleted();
+    } catch (err) {
+      console.error("Error deleting department:", err);
+      if (err.response?.status === 403) {
+        alert("Access denied: You don't have permission to delete departments.");
+      } else {
+        alert("Error deleting department: " + (err.response?.data?.message || err.message));
+      }
+    }
+  };
+
   const handleViewDepartment = (dept) => {
     setSelectedDepartment(dept);
     setIsModalOpen(true);
   };
 
-  // Close all modals
   const closeModal = () => {
     setIsModalOpen(false);
     setSelectedDepartment(null);
@@ -51,10 +75,9 @@ function DepartmentList({ departments, onDepartmentDeleted, onEditDepartment }) 
           <tbody>
             {departments.map((dept) => (
               <tr key={dept.id} className="table-row">
-                {/* FIXED: Use dept.id consistently */}
                 <td className="dept-id">
                   <FaIdCard className="icon-sm" />
-                  {dept.id} {/* Changed from dept.deptId || dept.id */}
+                  {dept.id}
                 </td>
                 
                 <td className="dept-name">{dept.name}</td>
@@ -82,7 +105,6 @@ function DepartmentList({ departments, onDepartmentDeleted, onEditDepartment }) 
                       <FaEye />
                     </button>
                     
-                    {/* FIXED: Use dept.id for deletion */}
                     <button
                       className="action-btn delete-btn"
                       onClick={() => setConfirmDelete({ show: true, deptId: dept.id })}
@@ -98,7 +120,6 @@ function DepartmentList({ departments, onDepartmentDeleted, onEditDepartment }) 
         </table>
       </div>
 
-      {/* Department Details Modal - FIXED ID display */}
       {isModalOpen && selectedDepartment && (
         <div className="modal-overlay">
           <div className="modal-content modern-modal">
@@ -114,14 +135,13 @@ function DepartmentList({ departments, onDepartmentDeleted, onEditDepartment }) 
 
             <div className="modal-body">
               <div className="details-grid">
-                {/* FIXED: Use selectedDepartment.id consistently */}
                 <div className="detail-item">
                   <div className="detail-icon">
                     <FaIdCard />
                   </div>
                   <div className="detail-content">
                     <label>Department ID</label>
-                    <span>{selectedDepartment.id}</span> {/* Changed from deptId || id */}
+                    <span>{selectedDepartment.id}</span>
                   </div>
                 </div>
 
@@ -164,7 +184,7 @@ function DepartmentList({ departments, onDepartmentDeleted, onEditDepartment }) 
                     </div>
                     <div className="detail-content">
                       <label>Created Date</label>
-                      <span>{selectedDepartment.createdDate}</span>
+                      <span>{new Date(selectedDepartment.createdDate).toLocaleDateString()}</span>
                     </div>
                   </div>
                 )}
@@ -200,7 +220,6 @@ function DepartmentList({ departments, onDepartmentDeleted, onEditDepartment }) 
         </div>
       )}
 
-      {/* Delete Confirmation Modal - No changes needed here */}
       {confirmDelete.show && (
         <div className="modal-overlay">
           <div className="modal-content modern-modal delete-modal">

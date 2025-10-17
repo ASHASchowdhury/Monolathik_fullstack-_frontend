@@ -1,34 +1,24 @@
 import React, { useState } from "react";
 import axios from "axios";
-import { FaUser, FaLock, FaBuilding, FaEnvelope, FaExclamationTriangle, FaCheck } from "react-icons/fa";
+import { FaUser, FaLock, FaBuilding, FaExclamationTriangle, FaCheck } from "react-icons/fa";
 
-function Login({ onLogin, isLogin }) {
+function Login({ onLogin }) {
   const [credentials, setCredentials] = useState({
     username: "",
-    password: "",
-    email: ""
+    password: ""
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  // API Base URL
   const API_BASE = "http://localhost:8080";
 
-  // Allowed roles that can access the system
-  const ALLOWED_ROLES = ["HR", "PM", "CTO", "DIRECTOR"];
-
-  /**
-   * Handle login form submission
-   * Makes API call to /auth/login endpoint
-   */
   const handleLogin = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     setError("");
     setSuccess("");
 
-    // Basic validation
     if (!credentials.username || !credentials.password) {
       setError("Please enter both username and password");
       setIsLoading(false);
@@ -36,12 +26,8 @@ function Login({ onLogin, isLogin }) {
     }
 
     try {
-      console.log("Login attempt with:", {
-        username: credentials.username,
-        password: "***" // Don't log actual password
-      });
+      console.log("Login attempt with:", { username: credentials.username });
 
-      // API Call: POST /auth/login
       const response = await axios.post(`${API_BASE}/auth/login`, {
         username: credentials.username,
         password: credentials.password
@@ -49,42 +35,27 @@ function Login({ onLogin, isLogin }) {
 
       console.log("Login API response:", response.data);
 
-      // Handle successful login response
       if (response.data.success) {
         const userData = {
-          id: response.data.id || Date.now(), // Use timestamp as fallback ID
           username: response.data.username,
           role: response.data.role,
-          name: response.data.name || response.data.username, // Use name if provided, else username
-          email: response.data.email || `${response.data.username}@company.com`
+          name: response.data.username,
+          email: `${response.data.username}@company.com`
         };
 
-        // Check if user has allowed role
-        if (!ALLOWED_ROLES.includes(userData.role.toUpperCase())) {
-          setError("Access denied. Only HR, PM, CTO, and Director can access this system.");
-          setIsLoading(false);
-          return;
-        }
-
-        // Store user data in localStorage for session persistence
         localStorage.setItem("user", JSON.stringify(userData));
-        localStorage.setItem("token", response.data.token || "dummy-token"); // Store token if available
         
         setSuccess(`Login successful! Welcome ${userData.role} ${userData.name}`);
         
-        // Notify parent component about successful login
-        setTimeout(() => onLogin(userData), 1500);
+        setTimeout(() => onLogin(userData), 1000);
       } else {
         setError(response.data.message || "Login failed. Please check your credentials.");
       }
     } catch (err) {
       console.error("Login API error:", err);
       
-      // Enhanced error handling
       if (err.response?.status === 401) {
         setError("Invalid username or password");
-      } else if (err.response?.status === 403) {
-        setError("Access denied. Insufficient permissions.");
       } else if (err.response?.data?.message) {
         setError(err.response.data.message);
       } else if (err.request) {
@@ -97,33 +68,34 @@ function Login({ onLogin, isLogin }) {
     }
   };
 
-
-
-  /**
-   * Handle form submission based on current mode (login/register)
-   */
-  const handleSubmit = (e) => {
-    if (isLogin) {
-      handleLogin(e);
-    } 
-  };
-
-  /**
-   * Handle input changes and clear errors
-   */
   const handleChange = (e) => {
     setCredentials({
       ...credentials,
       [e.target.name]: e.target.value
     });
-    // Clear errors when user starts typing
     if (error) setError("");
     if (success) setSuccess("");
   };
 
-  // Inline styles for the component
-  const styles = {
-    container: {
+  const demoAccounts = [
+    { username: "hr", password: "hr123", role: "HR" },
+    { username: "director", password: "director123", role: "DIRECTOR" },
+    { username: "pm", password: "pm123", role: "PROJECT_MANAGER" },
+    { username: "cto", password: "cto123", role: "CTO" },
+    { username: "employee", password: "employee123", role: "USER" }
+  ];
+
+  const fillDemoCredentials = (account) => {
+    setCredentials({
+      username: account.username,
+      password: account.password
+    });
+    setError("");
+    setSuccess(`Demo ${account.role} account loaded - Click Login`);
+  };
+
+  return (
+    <div style={{
       minHeight: "100vh",
       backgroundColor: "#f8fafc",
       display: "flex",
@@ -131,132 +103,17 @@ function Login({ onLogin, isLogin }) {
       justifyContent: "center",
       padding: "1rem",
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-    },
-    loginCard: {
-      backgroundColor: "#ffffff",
-      borderRadius: "16px",
-      padding: "2.5rem",
-      boxShadow: "0 20px 40px rgba(0, 0, 0, 0.1)",
-      border: "1px solid #e2e8f0",
-      width: "100%",
-      maxWidth: "420px",
-      position: "relative"
-    },
-    header: {
-      textAlign: "center",
-      marginBottom: "2rem"
-    },
-    logo: {
-      width: "64px",
-      height: "64px",
-      background: "linear-gradient(135deg, #10b981, #059669)",
-      borderRadius: "12px",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      color: "white",
-      fontSize: "1.5rem",
-      margin: "0 auto 1rem"
-    },
-    title: {
-      color: "#1e293b",
-      fontSize: "1.75rem",
-      fontWeight: "700",
-      margin: "0 0 0.5rem 0"
-    },
-    subtitle: {
-      color: "#64748b",
-      fontSize: "1rem",
-      margin: 0
-    },
-    form: {
-      display: "flex",
-      flexDirection: "column",
-      gap: "1rem"
-    },
-    inputGroup: {
-      position: "relative"
-    },
-    input: {
-      width: "100%",
-      padding: "0.75rem 1rem 0.75rem 2.5rem",
-      border: "2px solid #e2e8f0",
-      borderRadius: "8px",
-      fontSize: "0.95rem",
-      fontFamily: "inherit",
-      boxSizing: "border-box",
-      transition: "all 0.2s ease"
-    },
-    inputIcon: {
-      position: "absolute",
-      left: "12px",
-      top: "50%",
-      transform: "translateY(-50%)",
-      color: "#94a3b8",
-      fontSize: "0.9rem"
-    },
-    submitBtn: {
-      background: "linear-gradient(135deg, #10b981, #059669)",
-      color: "white",
-      border: "none",
-      padding: "0.875rem 1.5rem",
-      borderRadius: "8px",
-      fontSize: "1rem",
-      fontWeight: "600",
-      cursor: "pointer",
-      marginTop: "0.5rem",
-      transition: "all 0.2s ease",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: "0.5rem"
-    },
-    toggleText: {
-      textAlign: "center",
-      color: "#64748b",
-      fontSize: "0.9rem",
-      marginTop: "1.5rem"
-    },
-    toggleLink: {
-      color: "#10b981",
-      fontWeight: "600",
-      cursor: "pointer",
-      background: "none",
-      border: "none",
-      textDecoration: "underline"
-    },
-    error: {
-      backgroundColor: "#fee2e2",
-      color: "#dc2626",
-      padding: "0.75rem 1rem",
-      borderRadius: "8px",
-      fontSize: "0.9rem",
-      textAlign: "center",
-      marginBottom: "1rem",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: "0.5rem"
-    },
-    success: {
-      backgroundColor: "#d1fae5",
-      color: "#065f46",
-      padding: "0.75rem 1rem",
-      borderRadius: "8px",
-      fontSize: "0.9rem",
-      textAlign: "center",
-      marginBottom: "1rem",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: "0.5rem"
-    }
-  };
-
-  return (
-    <div style={styles.container}>
-      <div style={styles.loginCard}>
-        {/* Top accent bar */}
+    }}>
+      <div style={{
+        backgroundColor: "#ffffff",
+        borderRadius: "16px",
+        padding: "2.5rem",
+        boxShadow: "0 20px 40px rgba(0, 0, 0, 0.1)",
+        border: "1px solid #e2e8f0",
+        width: "100%",
+        maxWidth: "420px",
+        position: "relative"
+      }}>
         <div style={{
           position: "absolute",
           top: 0,
@@ -266,86 +123,150 @@ function Login({ onLogin, isLogin }) {
           background: "linear-gradient(90deg, #10b981, #059669)"
         }}></div>
 
-        {/* Header Section */}
-        <div style={styles.header}>
-          <div style={styles.logo}>
+        <div style={{ textAlign: "center", marginBottom: "2rem" }}>
+          <div style={{
+            width: "64px",
+            height: "64px",
+            background: "linear-gradient(135deg, #10b981, #059669)",
+            borderRadius: "12px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "white",
+            fontSize: "1.5rem",
+            margin: "0 auto 1rem"
+          }}>
             <FaBuilding />
           </div>
-          <h1 style={styles.title}>Company Portal</h1>
-          <p style={styles.subtitle}>
-            {isLogin ? "Sign in to your account" : "Create your account"}
+          <h1 style={{
+            color: "#1e293b",
+            fontSize: "1.75rem",
+            fontWeight: "700",
+            margin: "0 0 0.5rem 0"
+          }}>Office Management</h1>
+          <p style={{ color: "#64748b", fontSize: "1rem", margin: 0 }}>
+            Sign in to your account
           </p>
         </div>
 
-        {/* Error/Success Messages */}
         {error && (
-          <div style={styles.error}>
+          <div style={{
+            backgroundColor: "#fee2e2",
+            color: "#dc2626",
+            padding: "0.75rem 1rem",
+            borderRadius: "8px",
+            fontSize: "0.9rem",
+            textAlign: "center",
+            marginBottom: "1rem",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "0.5rem"
+          }}>
             <FaExclamationTriangle />
             {error}
           </div>
         )}
         {success && (
-          <div style={styles.success}>
+          <div style={{
+            backgroundColor: "#d1fae5",
+            color: "#065f46",
+            padding: "0.75rem 1rem",
+            borderRadius: "8px",
+            fontSize: "0.9rem",
+            textAlign: "center",
+            marginBottom: "1rem",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "0.5rem"
+          }}>
             <FaCheck />
             {success}
           </div>
         )}
 
-        {/* Login/Register Form */}
-        <form onSubmit={handleSubmit} style={styles.form}>
-          {/* Username Field */}
-          <div style={styles.inputGroup}>
-            <FaUser style={styles.inputIcon} />
+        <form onSubmit={handleLogin} style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: "1rem"
+        }}>
+          <div style={{ position: "relative" }}>
+            <FaUser style={{
+              position: "absolute",
+              left: "12px",
+              top: "50%",
+              transform: "translateY(-50%)",
+              color: "#94a3b8",
+              fontSize: "0.9rem"
+            }} />
             <input
               type="text"
               name="username"
               value={credentials.username}
               onChange={handleChange}
               placeholder="Username"
-              style={styles.input}
+              style={{
+                width: "100%",
+                padding: "0.75rem 1rem 0.75rem 2.5rem",
+                border: "2px solid #e2e8f0",
+                borderRadius: "8px",
+                fontSize: "0.95rem",
+                fontFamily: "inherit",
+                boxSizing: "border-box",
+                transition: "all 0.2s ease"
+              }}
               required
               disabled={isLoading}
             />
           </div>
 
-          {/* Email Field (Only for Registration) */}
-          {!isLogin && (
-            <div style={styles.inputGroup}>
-              <FaEnvelope style={styles.inputIcon} />
-              <input
-                type="email"
-                name="email"
-                value={credentials.email}
-                onChange={handleChange}
-                placeholder="Email address"
-                style={styles.input}
-                required
-                disabled={isLoading}
-              />
-            </div>
-          )}
-
-          {/* Password Field */}
-          <div style={styles.inputGroup}>
-            <FaLock style={styles.inputIcon} />
+          <div style={{ position: "relative" }}>
+            <FaLock style={{
+              position: "absolute",
+              left: "12px",
+              top: "50%",
+              transform: "translateY(-50%)",
+              color: "#94a3b8",
+              fontSize: "0.9rem"
+            }} />
             <input
               type="password"
               name="password"
               value={credentials.password}
               onChange={handleChange}
               placeholder="Password"
-              style={styles.input}
+              style={{
+                width: "100%",
+                padding: "0.75rem 1rem 0.75rem 2.5rem",
+                border: "2px solid #e2e8f0",
+                borderRadius: "8px",
+                fontSize: "0.95rem",
+                fontFamily: "inherit",
+                boxSizing: "border-box",
+                transition: "all 0.2s ease"
+              }}
               required
               disabled={isLoading}
-              minLength={isLogin ? 1 : 6}
             />
           </div>
 
-          {/* Submit Button */}
           <button
             type="submit"
             style={{
-              ...styles.submitBtn,
+              background: "linear-gradient(135deg, #10b981, #059669)",
+              color: "white",
+              border: "none",
+              padding: "0.875rem 1.5rem",
+              borderRadius: "8px",
+              fontSize: "1rem",
+              fontWeight: "600",
+              marginTop: "0.5rem",
+              transition: "all 0.2s ease",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "0.5rem",
               opacity: isLoading ? 0.7 : 1,
               cursor: isLoading ? "not-allowed" : "pointer"
             }}
@@ -361,18 +282,56 @@ function Login({ onLogin, isLogin }) {
                   borderRadius: "50%",
                   animation: "spin 1s linear infinite"
                 }}></div>
-                {isLogin ? "Signing In..." : "Creating Account..."}
+                Signing In...
               </>
             ) : (
-              isLogin ? "Sign In" : "Create Account"
+              "Sign In"
             )}
           </button>
         </form>
 
-      
+        <div style={{
+          marginTop: "1.5rem",
+          padding: "1rem",
+          backgroundColor: "#f1f5f9",
+          borderRadius: "8px"
+        }}>
+          <div style={{
+            fontSize: "0.9rem",
+            fontWeight: "600",
+            color: "#475569",
+            marginBottom: "0.5rem"
+          }}>Demo Accounts:</div>
+          {demoAccounts.map((account, index) => (
+            <div key={index} style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              padding: "0.5rem",
+              fontSize: "0.8rem",
+              color: "#64748b"
+            }}>
+              <span>{account.role}: {account.username}</span>
+              <button
+                type="button"
+                style={{
+                  background: "#3b82f6",
+                  color: "white",
+                  border: "none",
+                  padding: "0.25rem 0.5rem",
+                  borderRadius: "4px",
+                  fontSize: "0.7rem",
+                  cursor: "pointer"
+                }}
+                onClick={() => fillDemoCredentials(account)}
+              >
+                Use
+              </button>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* Loading animation styles */}
       <style>
         {`
           @keyframes spin {

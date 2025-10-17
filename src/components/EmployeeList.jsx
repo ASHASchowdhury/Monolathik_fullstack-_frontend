@@ -22,14 +22,22 @@ import {
 import "./EmployeeList.css";
 
 function EmployeeList({ employees, onEmployeeDeleted, onEditEmployee }) {
-  // State variables for managing component data
   const [confirmDelete, setConfirmDelete] = useState({ show: false, empId: null, empName: "" });
-  const [selectedEmployee, setSelectedEmployee] = useState(null); // Currently selected employee for viewing
-  const [isModalOpen, setIsModalOpen] = useState(false); // Controls modal visibility
-  const [searchTerm, setSearchTerm] = useState(""); // Search input value
-  const [statusFilter, setStatusFilter] = useState("all"); // Filter for active/inactive employees
+  const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
-  // Filter employees based on search and status
+  const getAuthConfig = () => {
+    const user = JSON.parse(localStorage.getItem('user'));
+    return {
+      headers: {
+        'X-Username': user?.username || '',
+        'X-Role': user?.role || 'USER'
+      }
+    };
+  };
+
   const filteredEmployees = employees.filter(emp => {
     const matchesSearch = emp.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          emp.email?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -39,17 +47,27 @@ function EmployeeList({ employees, onEmployeeDeleted, onEditEmployee }) {
     return matchesSearch && matchesStatus;
   });
 
-  // Delete employee from database
   const deleteEmployee = async (id) => {
     try {
-      await axios.delete(`http://10.0.6.1:8080/employees/${id}`);
-      onEmployeeDeleted(); // Refresh employee list
+      const config = getAuthConfig();
+      await axios.delete(`http://localhost:8080/employees/${id}`, config);
+      onEmployeeDeleted();
     } catch (err) {
       console.error("Error deleting employee:", err);
+      alert("Error deleting employee: " + (err.response?.data?.message || err.message));
     }
   };
 
-  // Return appropriate gender icon
+  const handleViewEmployee = (emp) => {
+    setSelectedEmployee(emp);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setSelectedEmployee(null);
+  };
+
   const getGenderIcon = (gender) => {
     switch (gender?.toLowerCase()) {
       case "male":
@@ -61,19 +79,6 @@ function EmployeeList({ employees, onEmployeeDeleted, onEditEmployee }) {
     }
   };
 
-  // Open modal with employee details
-  const handleViewEmployee = (emp) => {
-    setSelectedEmployee(emp);
-    setIsModalOpen(true);
-  };
-
-  // Close modal and reset selection
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setSelectedEmployee(null);
-  };
-
-  // Calculate age from date of birth
   const calculateAge = (dateString) => {
     if (!dateString) return 'N/A';
     const today = new Date();
@@ -87,7 +92,6 @@ function EmployeeList({ employees, onEmployeeDeleted, onEditEmployee }) {
     return age;
   };
 
-  // Format date to readable string
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -99,7 +103,6 @@ function EmployeeList({ employees, onEmployeeDeleted, onEditEmployee }) {
 
   return (
     <div className="modern-employee-list">
-      {/* Header with title and filters */}
       <div className="list-header">
         <div className="header-content">
           <div className="header-title">
@@ -107,7 +110,6 @@ function EmployeeList({ employees, onEmployeeDeleted, onEditEmployee }) {
             <span className="employee-count">{filteredEmployees.length} of {employees.length} employees</span>
           </div>
           <div className="header-actions">
-            {/* Search input */}
             <div className="search-box">
               <FaSearch className="search-icon" />
               <input
@@ -118,7 +120,6 @@ function EmployeeList({ employees, onEmployeeDeleted, onEditEmployee }) {
                 className="search-input"
               />
             </div>
-            {/* Status filter dropdown */}
             <div className="filter-group">
               <FaFilter className="filter-icon" />
               <select 
@@ -135,11 +136,9 @@ function EmployeeList({ employees, onEmployeeDeleted, onEditEmployee }) {
         </div>
       </div>
 
-      {/* Grid of employee cards */}
       <div className="employee-grid">
         {filteredEmployees.map((emp) => (
           <div key={emp.id} className="modern-employee-card">
-            {/* Card header with basic info */}
             <div className="card-header">
               <div className="employee-avatar">
                 <FaUser />
@@ -153,7 +152,6 @@ function EmployeeList({ employees, onEmployeeDeleted, onEditEmployee }) {
               </div>
             </div>
 
-            {/* Card body with employee details */}
             <div className="card-body">
               <div className="info-item">
                 <FaBuilding className="info-icon" />
@@ -183,7 +181,6 @@ function EmployeeList({ employees, onEmployeeDeleted, onEditEmployee }) {
               </div>
             </div>
 
-            {/* Action buttons */}
             <div className="card-actions">
               <button 
                 className="action-btn view-btn" 
@@ -211,7 +208,6 @@ function EmployeeList({ employees, onEmployeeDeleted, onEditEmployee }) {
         ))}
       </div>
 
-      {/* Show empty state when no employees found */}
       {filteredEmployees.length === 0 && (
         <div className="empty-state">
           <FaUser className="empty-icon" />
@@ -220,7 +216,6 @@ function EmployeeList({ employees, onEmployeeDeleted, onEditEmployee }) {
         </div>
       )}
 
-      {/* Employee Details Modal - Shows when isModalOpen is true */}
       {isModalOpen && selectedEmployee && (
         <div className="modern-modal-overlay">
           <div className="employee-details-modal">
@@ -245,7 +240,6 @@ function EmployeeList({ employees, onEmployeeDeleted, onEditEmployee }) {
                 </div>
               </div>
 
-              {/* Detailed employee information grid */}
               <div className="details-grid">
                 <div className="detail-item">
                   <label>Email</label>
@@ -291,7 +285,6 @@ function EmployeeList({ employees, onEmployeeDeleted, onEditEmployee }) {
               </div>
             </div>
 
-            {/* Modal footer with action buttons */}
             <div className="modal-footer">
               <button className="btn-primary" onClick={closeModal}>
                 Close
@@ -311,7 +304,6 @@ function EmployeeList({ employees, onEmployeeDeleted, onEditEmployee }) {
         </div>
       )}
 
-      {/* Delete Confirmation Modal - Shows when confirmDelete.show is true */}
       {confirmDelete.show && (
         <div className="modern-modal-overlay">
           <div className="delete-confirmation">
