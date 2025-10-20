@@ -1,14 +1,9 @@
 import React, { useState, useRef, useEffect } from "react";
 import axios from "axios";
 import { 
-  FaPaperPlane, 
-  FaRobot, 
-  FaUser, 
-  FaSync, 
-  FaExclamationTriangle,
-  FaTimes,
-  FaExpand,
-  FaCompress
+  FaPaperPlane, FaRobot, FaUser, FaSync, FaExclamationTriangle,
+  FaTimes, FaExpand, FaCompress, FaFilePdf, FaUpload, FaCheckCircle,
+  FaBrain, FaGlobe
 } from "react-icons/fa";
 import "./AIChat.css";
 
@@ -19,29 +14,34 @@ function AIChat() {
   const [isOpen, setIsOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [error, setError] = useState("");
+  const [userInfo, setUserInfo] = useState(null);
+  const [usePdfMode, setUsePdfMode] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [pdfUploaded, setPdfUploaded] = useState(false);
   const messagesEndRef = useRef(null);
+  const fileInputRef = useRef(null);
 
-  const API_BASE = "http://localhost:8080";
+  // API Configuration - SEPARATE APIS
+  const PDF_AI_API_BASE = "http://10.0.6.22:3737"; // Your API for PDF AI
+  const DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions"; // DeepSeek for General AI
+   const DEEPSEEK_API_KEY = "sk-81d2983aa27a467e9a9adcdde90fde52";
 
-  // FIXED: Proper authentication headers
-  const getAuthConfig = () => {
+  // Initialize user info
+  useEffect(() => {
+    initializeUserInfo();
+  }, []);
+
+  const initializeUserInfo = () => {
     try {
       const userData = localStorage.getItem('user');
-      if (!userData) {
-        console.warn('No user data found in localStorage');
-        return { headers: {} };
+      if (userData) {
+        const user = JSON.parse(userData);
+        setUserInfo(user);
       }
-      
-      const user = JSON.parse(userData);
-      return {
-        headers: {
-          'X-Username': user.username || '',
-          'X-Role': user.role || 'USER'
-        }
-      };
     } catch (error) {
-      console.error('Error getting auth config:', error);
-      return { headers: {} };
+      console.error('Error initializing user info:', error);
     }
   };
 
@@ -56,28 +56,213 @@ function AIChat() {
   // Add welcome message when chat opens
   useEffect(() => {
     if (isOpen && messages.length === 0) {
-      setMessages([
+      const welcomeMessage = {
+        id: 1,
+        text: getWelcomeMessage(),
+        sender: "ai",
+        timestamp: new Date(),
+        role: "AI Assistant"
+      };
+      setMessages([welcomeMessage]);
+    }
+  }, [isOpen, usePdfMode]);
+
+  const getWelcomeMessage = () => {
+    if (usePdfMode) {
+      return "Welcome to PDF Assistant! Upload a PDF file and ask questions about its content using our PDF AI.";
+    }
+    return userInfo 
+      ? `Hello ${userInfo.username || 'there'}! I'm your DeepSeek AI assistant. How can I help you today?`
+      : "Hello! I'm your DeepSeek AI assistant. How can I help you today?";
+  };
+
+  const handleFileSelect = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      if (file.type !== 'application/pdf') {
+        setError("Please select a PDF file");
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        setError("File size must be less than 10MB");
+        return;
+      }
+      setSelectedFile(file);
+      setError("");
+    }
+  };
+
+  // Upload PDF to your PDF AI API
+  const uploadPdf = async () => {
+    if (!selectedFile) {
+      setError("Please select a PDF file first");
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadProgress(0);
+    setError("");
+
+    try {
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+
+      // Simulate upload progress
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prev + 10;
+        });
+      }, 200);
+
+      const response = await axios.post(
+        `${PDF_AI_API_BASE}/upload-pdf`,
+        formData,
         {
-          id: 1,
-          text: "Hello! I'm your AI assistant. How can I help you with HR management, employee tasks, or department queries today?",
+          headers: {
+            'accept': 'application/json',
+            'Content-Type': 'multipart/form-data',
+          },
+          timeout: 60000
+        }
+      );
+
+      clearInterval(progressInterval);
+      setUploadProgress(100);
+
+      console.log("PDF Upload Response:", response.data);
+
+      if (response.status === 200) {
+        setPdfUploaded(true);
+        const successMessage = {
+          id: Date.now(),
+          text: `PDF "${selectedFile.name}" uploaded successfully! Now you can ask questions about its content using PDF AI.`,
           sender: "ai",
           timestamp: new Date(),
-          role: "AI Assistant"
-        }
-      ]);
-    }
-  }, [isOpen]);
+          role: "PDF AI Assistant"
+        };
+        setMessages(prev => [...prev, successMessage]);
+      } else {
+        throw new Error(response.data?.error || "Upload failed");
+      }
 
+    } catch (err) {
+      console.error("Error uploading PDF:", err);
+      
+      let errorMessage = "Failed to upload PDF. ";
+      if (err.code === 'ERR_NETWORK') {
+        errorMessage += "Cannot connect to PDF AI server. Please check if the server is running.";
+      } else if (err.response?.data?.error) {
+        errorMessage += err.response.data.error;
+      } else {
+        errorMessage += err.message || "Unknown error occurred";
+      }
+      
+      setError(errorMessage);
+    } finally {
+      setIsUploading(false);
+      setTimeout(() => setUploadProgress(0), 1000);
+    }
+  };
+
+ const callGeneralAI = async (message) => {
+  try {
+    // Option 1: Hugging Face Free API (No key required for some models)
+    const response = await axios.post(
+      "https://api-inference.huggingface.co/models/microsoft/DialoGPT-large",
+      {
+        inputs: message,
+        parameters: {
+          max_length: 1000,
+          temperature: 0.7
+        }
+      },
+      {
+        headers: {
+          'Authorization': 'Bearer your_huggingface_token_optional', // Optional for some models
+          'Content-Type': 'application/json'
+        },
+        timeout: 30000
+      }
+    );
+
+    return response.data[0]?.generated_text || "I received your message but couldn't generate a response.";
+    
+  } catch (err) {
+    console.error("AI API error:", err);
+    
+    // Fallback to mock responses if API fails
+    const mockResponses = {
+      "What is JSX syntax?": "JSX is a syntax extension for JavaScript that allows you to write HTML-like code in React components. It makes components more readable and easier to write.",
+      "How to use props in React?": "Props (properties) are used to pass data from parent to child components in React. They are read-only and make components reusable.",
+      "Explain React component lifecycle": "React components have lifecycle methods: componentDidMount (after render), componentDidUpdate (after update), componentWillUnmount (before removal). With hooks, we use useEffect.",
+      "What are React hooks?": "React hooks are functions that let you use state and lifecycle features in functional components. Common hooks: useState, useEffect, useContext."
+    };
+    
+    return mockResponses[message] || `I understand you're asking about: "${message}". This is a demo response. In production, this would connect to a real AI API.`;
+  }
+};
+  // Call PDF AI API for PDF mode
+  const callPdfAI = async (message) => {
+    const params = new URLSearchParams();
+    params.append('question', message);
+
+    const response = await axios.post(
+      `${PDF_AI_API_BASE}/ask`,
+      params,
+      {
+        headers: {
+          'accept': 'application/json',
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        timeout: 30000
+      }
+    );
+
+    let aiResponseText = "";
+
+    // Handle response format from PDF AI
+    if (response.data) {
+      if (typeof response.data === 'string') {
+        aiResponseText = response.data;
+      } else if (response.data.answer) {
+        aiResponseText = response.data.answer;
+      } else if (response.data.response) {
+        aiResponseText = response.data.response;
+      } else if (response.data.message) {
+        aiResponseText = response.data.message;
+      } else {
+        aiResponseText = JSON.stringify(response.data);
+      }
+    }
+
+    if (!aiResponseText || aiResponseText.toLowerCase().includes("error")) {
+      throw new Error(aiResponseText || "No response from PDF AI");
+    }
+
+    return aiResponseText;
+  };
+
+  // Send message to appropriate API
   const sendMessage = async (e) => {
     e.preventDefault();
     
     if (!inputMessage.trim() || isLoading) return;
 
+    if (usePdfMode && !pdfUploaded) {
+      setError("Please upload a PDF file first before sending messages");
+      return;
+    }
+
     const userMessage = {
       id: Date.now(),
       text: inputMessage,
       sender: "user",
-      timestamp: new Date()
+      timestamp: new Date(),
+      username: userInfo?.username || 'User'
     };
 
     setMessages(prev => [...prev, userMessage]);
@@ -86,74 +271,104 @@ function AIChat() {
     setError("");
 
     try {
-      const config = getAuthConfig();
-      
-      const response = await axios.post(
-        `${API_BASE}/ai/chat`,
-        { message: inputMessage },
-        config
-      );
+      let aiResponseText;
+      let aiRole;
+      let aiSource;
 
-      console.log("AI Response:", response.data);
-
-      if (response.data.response) {
-        const aiMessage = {
-          id: Date.now() + 1,
-          text: response.data.response,
-          sender: "ai",
-          timestamp: new Date(),
-          role: response.data.role || "AI Assistant",
-          source: response.data.source
-        };
-        setMessages(prev => [...prev, aiMessage]);
+      if (usePdfMode) {
+        // Use PDF AI API
+        aiResponseText = await callPdfAI(inputMessage);
+        aiRole = "PDF AI Assistant";
+        aiSource = "pdf-ai";
       } else {
-        throw new Error("No response from AI service");
+        // Use DeepSeek API
+     aiResponseText = await callGeneralAI(inputMessage);
+
+        aiRole = "DeepSeek AI";
+        aiSource = "deepseek";
       }
+
+      const aiMessage = {
+        id: Date.now() + 1,
+        text: aiResponseText,
+        sender: "ai",
+        timestamp: new Date(),
+        role: aiRole,
+        source: aiSource
+      };
+
+      setMessages(prev => [...prev, aiMessage]);
 
     } catch (err) {
       console.error("Error sending message:", err);
       
+      let errorText = "Sorry, I'm having trouble processing your request. ";
+      
+      if (err.response) {
+        errorText += `Server error: ${err.response.status} - ${err.response.data?.error || 'Unknown error'}`;
+      } else if (err.request) {
+        errorText += "No response from server. Please check your connection.";
+      } else {
+        errorText += err.message || "Please try again later.";
+      }
+      
       const errorMessage = {
         id: Date.now() + 1,
-        text: "Sorry, I'm having trouble connecting to the AI service. Please try again later.",
+        text: errorText,
         sender: "ai",
         timestamp: new Date(),
         isError: true
       };
       
       setMessages(prev => [...prev, errorMessage]);
-      setError(err.response?.data?.error || "Failed to send message");
+      setError(errorText);
     } finally {
       setIsLoading(false);
     }
   };
 
   const clearChat = () => {
-    setMessages([
-      {
-        id: 1,
-        text: "Hello! I'm your AI assistant. How can I help you with HR management, employee tasks, or department queries today?",
-        sender: "ai",
-        timestamp: new Date(),
-        role: "AI Assistant"
-      }
-    ]);
+    const welcomeMessage = {
+      id: 1,
+      text: getWelcomeMessage(),
+      sender: "ai",
+      timestamp: new Date(),
+      role: "AI Assistant"
+    };
+    setMessages([welcomeMessage]);
     setError("");
   };
 
+  const handleModeToggle = (newMode) => {
+    if (usePdfMode !== newMode) {
+      setUsePdfMode(newMode);
+      setPdfUploaded(false);
+      setSelectedFile(null);
+      setError("");
+      
+      const welcomeMessage = {
+        id: 1,
+        text: getWelcomeMessage(),
+        sender: "ai",
+        timestamp: new Date(),
+        role: newMode ? "PDF AI Assistant" : "DeepSeek AI"
+      };
+      setMessages([welcomeMessage]);
+    }
+  };
+
   const formatTime = (date) => {
-    return date.toLocaleTimeString('en-US', { 
+    return new Date(date).toLocaleTimeString('en-US', { 
       hour: '2-digit', 
       minute: '2-digit' 
     });
   };
 
-  // Quick questions suggestions
   const quickQuestions = [
-    "How do I add a new employee?",
-    "Show me department statistics",
-    "How to assign tasks to team members?",
-    "What's the process for employee onboarding?"
+    "What is JSX syntax?",
+    "How to use props in React?",
+    "Explain React component lifecycle",
+    "What are React hooks?"
   ];
 
   const handleQuickQuestion = (question) => {
@@ -180,10 +395,12 @@ function AIChat() {
       {/* Chat Header */}
       <div className="chat-header">
         <div className="chat-title">
-          <FaRobot className="title-icon" />
+          {usePdfMode ? <FaFilePdf className="title-icon" /> : <FaBrain className="title-icon" />}
           <div>
             <h3>AI Assistant</h3>
-            <span className="chat-subtitle">HR & Office Management</span>
+            <span className="chat-subtitle">
+              {usePdfMode ? "PDF AI" : "DeepSeek AI"} | {userInfo?.username || 'Guest'}
+            </span>
           </div>
         </div>
         <div className="chat-actions">
@@ -211,6 +428,91 @@ function AIChat() {
         </div>
       </div>
 
+      {/* Mode Toggle */}
+      <div className="mode-toggle-section">
+        <div className="mode-toggle">
+          <button 
+            className={`mode-btn ${!usePdfMode ? 'active' : ''}`}
+            onClick={() => handleModeToggle(false)}
+          >
+            <FaBrain />
+            <span>DeepSeek AI</span>
+          </button>
+          <button 
+            className={`mode-btn ${usePdfMode ? 'active' : ''}`}
+            onClick={() => handleModeToggle(true)}
+          >
+            <FaFilePdf />
+            <span>PDF AI</span>
+          </button>
+        </div>
+      </div>
+
+      {/* PDF Upload Section - Only for PDF AI mode */}
+      {usePdfMode && (
+        <div className="pdf-upload-section">
+          <div className="upload-area">
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileSelect}
+              accept=".pdf"
+              style={{ display: 'none' }}
+            />
+            
+            {!pdfUploaded ? (
+              <>
+                <button 
+                  className="upload-btn"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                >
+                  <FaUpload />
+                  {selectedFile ? "Change PDF" : "Select PDF"}
+                </button>
+                
+                {selectedFile && (
+                  <div className="file-info">
+                    <FaFilePdf />
+                    <span className="file-name">{selectedFile.name}</span>
+                    <button 
+                      className="upload-submit-btn"
+                      onClick={uploadPdf}
+                      disabled={isUploading}
+                    >
+                      {isUploading ? `Uploading... ${uploadProgress}%` : "Upload to PDF AI"}
+                    </button>
+                  </div>
+                )}
+                
+                {isUploading && (
+                  <div className="upload-progress">
+                    <div 
+                      className="progress-bar"
+                      style={{ width: `${uploadProgress}%` }}
+                    ></div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="upload-success">
+                <FaCheckCircle className="success-icon" />
+                <span>PDF Ready: {selectedFile.name}</span>
+                <button 
+                  className="change-file-btn"
+                  onClick={() => {
+                    setPdfUploaded(false);
+                    setSelectedFile(null);
+                  }}
+                >
+                  Change File
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Chat Messages */}
       <div className="chat-messages">
         {messages.map((message) => (
@@ -219,22 +521,28 @@ function AIChat() {
             className={`message ${message.sender} ${message.isError ? 'error' : ''}`}
           >
             <div className="message-avatar">
-              {message.sender === "ai" ? <FaRobot /> : <FaUser />}
+              {message.sender === "ai" ? (
+                usePdfMode ? <FaFilePdf /> : <FaBrain />
+              ) : (
+                <FaUser />
+              )}
             </div>
             <div className="message-content">
               <div className="message-header">
                 <span className="sender-name">
-                  {message.sender === "ai" ? (message.role || "AI Assistant") : "You"}
+                  {message.sender === "ai" ? message.role : (message.username || "You")}
+                  {message.source && (
+                    <span className={`source-badge ${message.source}`}>
+                      {message.source}
+                    </span>
+                  )}
                 </span>
                 <span className="message-time">
-                  {formatTime(new Date(message.timestamp))}
+                  {formatTime(message.timestamp)}
                 </span>
               </div>
               <div className="message-text">
                 {message.text}
-                {message.source === "fallback" && (
-                  <span className="fallback-badge">Fallback Response</span>
-                )}
               </div>
               {message.isError && (
                 <div className="error-indicator">
@@ -249,7 +557,7 @@ function AIChat() {
         {isLoading && (
           <div className="message ai loading">
             <div className="message-avatar">
-              <FaRobot />
+              {usePdfMode ? <FaFilePdf /> : <FaBrain />}
             </div>
             <div className="message-content">
               <div className="loading-dots">
@@ -264,8 +572,8 @@ function AIChat() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Quick Questions */}
-      {messages.length <= 2 && (
+      {/* Quick Questions - Only show in DeepSeek AI mode */}
+      {!usePdfMode && messages.length <= 2 && (
         <div className="quick-questions">
           <div className="quick-questions-title">Quick Questions:</div>
           <div className="quick-questions-grid">
@@ -288,6 +596,9 @@ function AIChat() {
         <div className="chat-error-banner">
           <FaExclamationTriangle />
           {error}
+          <button onClick={() => setError("")} className="error-close">
+            <FaTimes />
+          </button>
         </div>
       )}
 
@@ -298,14 +609,19 @@ function AIChat() {
             type="text"
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
-            placeholder="Type your message..."
-            disabled={isLoading}
+            placeholder={
+              usePdfMode 
+                ? (pdfUploaded ? "Ask about your PDF content..." : "Upload a PDF first to ask questions...")
+                : "Ask DeepSeek AI anything..."
+            }
+            disabled={isLoading || (usePdfMode && !pdfUploaded)}
             className="chat-input"
           />
           <button
             type="submit"
-            disabled={!inputMessage.trim() || isLoading}
+            disabled={!inputMessage.trim() || isLoading || (usePdfMode && !pdfUploaded)}
             className="send-btn"
+            title={usePdfMode && !pdfUploaded ? "Upload PDF first" : "Send message"}
           >
             {isLoading ? (
               <FaSync className="spin" />
