@@ -8,6 +8,7 @@ import {
 import "./AIChat.css";
 
 function AIChat() {
+  // State management for chat functionality
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -20,19 +21,22 @@ function AIChat() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [pdfUploaded, setPdfUploaded] = useState(false);
+  
+  // Refs for DOM elements
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  // API Configuration - SEPARATE APIS
-  const PDF_AI_API_BASE = "http://10.0.6.22:3737"; // Your API for PDF AI
-  const DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions"; // DeepSeek for General AI
-   const DEEPSEEK_API_KEY = "sk-81d2983aa27a467e9a9adcdde90fde52";
+  // API Configuration
+  const PDF_AI_API_BASE = "http://10.0.6.22:3333"; // Your PDF AI server
+  const GOOGLE_AI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent";
+  const GOOGLE_AI_API_KEY = "AIzaSyAjfD4Im7OXMtk2vkI9Hb1rY4es2TnNiYE";
 
-  // Initialize user info
+  // Initialize user info from localStorage on component mount
   useEffect(() => {
     initializeUserInfo();
   }, []);
 
+  // Get user information from localStorage
   const initializeUserInfo = () => {
     try {
       const userData = localStorage.getItem('user');
@@ -45,15 +49,17 @@ function AIChat() {
     }
   };
 
+  // Scroll to bottom of chat messages
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  // Auto-scroll when new messages are added
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
-  // Add welcome message when chat opens
+  // Add welcome message when chat opens for the first time
   useEffect(() => {
     if (isOpen && messages.length === 0) {
       const welcomeMessage = {
@@ -67,22 +73,26 @@ function AIChat() {
     }
   }, [isOpen, usePdfMode]);
 
+  // Generate appropriate welcome message based on mode
   const getWelcomeMessage = () => {
     if (usePdfMode) {
       return "Welcome to PDF Assistant! Upload a PDF file and ask questions about its content using our PDF AI.";
     }
     return userInfo 
-      ? `Hello ${userInfo.username || 'there'}! I'm your DeepSeek AI assistant. How can I help you today?`
-      : "Hello! I'm your DeepSeek AI assistant. How can I help you today?";
+      ? `Hello ${userInfo.username || 'there'}! I'm your Google Gemini 2.0 Flash AI assistant. How can I help you today?`
+      : "Hello! I'm your Google Gemini 2.0 Flash AI assistant. How can I help you today?";
   };
 
+  // Handle PDF file selection with validation
   const handleFileSelect = (event) => {
     const file = event.target.files[0];
     if (file) {
+      // Validate file type
       if (file.type !== 'application/pdf') {
         setError("Please select a PDF file");
         return;
       }
+      // Validate file size (10MB limit)
       if (file.size > 10 * 1024 * 1024) {
         setError("File size must be less than 10MB");
         return;
@@ -92,7 +102,7 @@ function AIChat() {
     }
   };
 
-  // Upload PDF to your PDF AI API
+  // Upload PDF to PDF AI API
   const uploadPdf = async () => {
     if (!selectedFile) {
       setError("Please select a PDF file first");
@@ -107,7 +117,7 @@ function AIChat() {
       const formData = new FormData();
       formData.append('file', selectedFile);
 
-      // Simulate upload progress
+      // Simulate upload progress for better UX
       const progressInterval = setInterval(() => {
         setUploadProgress(prev => {
           if (prev >= 90) {
@@ -118,6 +128,7 @@ function AIChat() {
         });
       }, 200);
 
+      // Upload PDF to the PDF AI server
       const response = await axios.post(
         `${PDF_AI_API_BASE}/upload-pdf`,
         formData,
@@ -168,43 +179,151 @@ function AIChat() {
     }
   };
 
- const callGeneralAI = async (message) => {
-  try {
-    // Option 1: Hugging Face Free API (No key required for some models)
-    const response = await axios.post(
-      "https://api-inference.huggingface.co/models/microsoft/DialoGPT-large",
-      {
-        inputs: message,
-        parameters: {
-          max_length: 1000,
-          temperature: 0.7
-        }
-      },
-      {
-        headers: {
-          'Authorization': 'Bearer your_huggingface_token_optional', // Optional for some models
-          'Content-Type': 'application/json'
-        },
-        timeout: 30000
-      }
-    );
+  // Reset PDF session on the server
+  const resetPdfSession = async () => {
+    try {
+      const response = await axios.post(`${PDF_AI_API_BASE}/reset`);
+      console.log("PDF session reset:", response.data);
+      return true;
+    } catch (err) {
+      console.error("Error resetting PDF session:", err);
+      return false;
+    }
+  };
 
-    return response.data[0]?.generated_text || "I received your message but couldn't generate a response.";
+  // Clear chat and reset PDF session if in PDF mode
+  const clearChat = async () => {
+    // Reset PDF session if in PDF mode and PDF was uploaded
+    if (usePdfMode && pdfUploaded) {
+      await resetPdfSession();
+    }
     
-  } catch (err) {
-    console.error("AI API error:", err);
-    
-    // Fallback to mock responses if API fails
-    const mockResponses = {
-      "What is JSX syntax?": "JSX is a syntax extension for JavaScript that allows you to write HTML-like code in React components. It makes components more readable and easier to write.",
-      "How to use props in React?": "Props (properties) are used to pass data from parent to child components in React. They are read-only and make components reusable.",
-      "Explain React component lifecycle": "React components have lifecycle methods: componentDidMount (after render), componentDidUpdate (after update), componentWillUnmount (before removal). With hooks, we use useEffect.",
-      "What are React hooks?": "React hooks are functions that let you use state and lifecycle features in functional components. Common hooks: useState, useEffect, useContext."
+    const welcomeMessage = {
+      id: 1,
+      text: getWelcomeMessage(),
+      sender: "ai",
+      timestamp: new Date(),
+      role: "AI Assistant"
     };
+    setMessages([welcomeMessage]);
+    setError("");
     
-    return mockResponses[message] || `I understand you're asking about: "${message}". This is a demo response. In production, this would connect to a real AI API.`;
-  }
-};
+    // Reset PDF states if in PDF mode
+    if (usePdfMode) {
+      setPdfUploaded(false);
+      setSelectedFile(null);
+    }
+  };
+
+  // Call Google Gemini AI for general questions
+  const callGeneralAI = async (message) => {
+    try {
+      const response = await axios.post(
+        `${GOOGLE_AI_API_URL}?key=${GOOGLE_AI_API_KEY}`,
+        {
+          contents: [
+            {
+              parts: [
+                {
+                  text: message
+                }
+              ]
+            }
+          ],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 1000,
+            topP: 0.8,
+            topK: 40
+          }
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          timeout: 30000
+        }
+      );
+
+      // Extract response from Google Gemini API
+      if (response.data && response.data.candidates && response.data.candidates.length > 0) {
+        return response.data.candidates[0].content.parts[0].text;
+      } else {
+        throw new Error("Invalid response format from Google AI");
+      }
+      
+    } catch (err) {
+      console.error("Google AI API error:", err);
+      
+      // If Gemini 2.0 Flash fails, try Gemini 1.5 Flash as fallback
+      try {
+        const fallbackResponse = await axios.post(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GOOGLE_AI_API_KEY}`,
+          {
+            contents: [
+              {
+                parts: [
+                  {
+                    text: message
+                  }
+                ]
+              }
+            ],
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 1000,
+            }
+          },
+          {
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            timeout: 15000
+          }
+        );
+
+        if (fallbackResponse.data && fallbackResponse.data.candidates && fallbackResponse.data.candidates.length > 0) {
+          return fallbackResponse.data.candidates[0].content.parts[0].text;
+        }
+      } catch (fallbackErr) {
+        console.log("Gemini 1.5 fallback also failed:", fallbackErr);
+      }
+      
+      // Final fallback - smart local responses
+      return generateSmartResponse(message);
+    }
+  };
+
+  // Smart local response generator as final fallback
+  const generateSmartResponse = (message) => {
+    const lowerMessage = message.toLowerCase();
+    
+    // Programming questions
+    if (lowerMessage.includes("react") || lowerMessage.includes("jsx")) {
+      if (lowerMessage.includes("jsx") || lowerMessage.includes("syntax")) {
+        return "JSX is a syntax extension for JavaScript that allows you to write HTML-like code in React components. It makes components more readable and easier to write. Example: `const element = <h1>Hello, world!</h1>;`";
+      }
+      if (lowerMessage.includes("props") || lowerMessage.includes("properties")) {
+        return "Props (properties) are used to pass data from parent to child components in React. They are read-only and make components reusable. Example: `function Welcome(props) { return <h1>Hello, {props.name}</h1>; }`";
+      }
+      if (lowerMessage.includes("hook") || lowerMessage.includes("useState") || lowerMessage.includes("useEffect")) {
+        return "React hooks are functions that let you use state and lifecycle features in functional components. Common hooks:\n- useState: Manage component state\n- useEffect: Handle side effects\n- useContext: Access context values\nExample: `const [count, setCount] = useState(0);`";
+      }
+      if (lowerMessage.includes("component") && lowerMessage.includes("lifecycle")) {
+        return "React components have lifecycle methods:\n- componentDidMount: After component renders\n- componentDidUpdate: After component updates\n- componentWillUnmount: Before component removal\nWith hooks, we use useEffect to handle lifecycle events.";
+      }
+    }
+
+    // Default responses
+    const defaultResponses = [
+      `I understand you're asking about: "${message}". I'm using a fallback response as the AI service is temporarily unavailable.`,
+      `Regarding "${message}", I can provide general information but for detailed answers, the AI service needs to be configured properly.`,
+      `I've received your question about "${message}". For comprehensive AI responses, please check the API configuration.`
+    ];
+
+    return defaultResponses[Math.floor(Math.random() * defaultResponses.length)];
+  };
+
   // Call PDF AI API for PDF mode
   const callPdfAI = async (message) => {
     const params = new URLSearchParams();
@@ -246,7 +365,7 @@ function AIChat() {
     return aiResponseText;
   };
 
-  // Send message to appropriate API
+  // Send message to appropriate API based on mode
   const sendMessage = async (e) => {
     e.preventDefault();
     
@@ -257,6 +376,7 @@ function AIChat() {
       return;
     }
 
+    // Add user message to chat
     const userMessage = {
       id: Date.now(),
       text: inputMessage,
@@ -276,18 +396,18 @@ function AIChat() {
       let aiSource;
 
       if (usePdfMode) {
-        // Use PDF AI API
+        // Use PDF AI API for PDF mode
         aiResponseText = await callPdfAI(inputMessage);
         aiRole = "PDF AI Assistant";
         aiSource = "pdf-ai";
       } else {
-        // Use DeepSeek API
-     aiResponseText = await callGeneralAI(inputMessage);
-
-        aiRole = "DeepSeek AI";
-        aiSource = "deepseek";
+        // Use Google Gemini AI for general AI mode
+        aiResponseText = await callGeneralAI(inputMessage);
+        aiRole = "Google Gemini";
+        aiSource = "google-ai";
       }
 
+      // Add AI response to chat
       const aiMessage = {
         id: Date.now() + 1,
         text: aiResponseText,
@@ -327,18 +447,7 @@ function AIChat() {
     }
   };
 
-  const clearChat = () => {
-    const welcomeMessage = {
-      id: 1,
-      text: getWelcomeMessage(),
-      sender: "ai",
-      timestamp: new Date(),
-      role: "AI Assistant"
-    };
-    setMessages([welcomeMessage]);
-    setError("");
-  };
-
+  // Toggle between PDF mode and General AI mode
   const handleModeToggle = (newMode) => {
     if (usePdfMode !== newMode) {
       setUsePdfMode(newMode);
@@ -351,12 +460,13 @@ function AIChat() {
         text: getWelcomeMessage(),
         sender: "ai",
         timestamp: new Date(),
-        role: newMode ? "PDF AI Assistant" : "DeepSeek AI"
+        role: newMode ? "PDF AI Assistant" : "Google Gemini"
       };
       setMessages([welcomeMessage]);
     }
   };
 
+  // Format timestamp for messages
   const formatTime = (date) => {
     return new Date(date).toLocaleTimeString('en-US', { 
       hour: '2-digit', 
@@ -364,6 +474,7 @@ function AIChat() {
     });
   };
 
+  // Pre-defined quick questions for user convenience
   const quickQuestions = [
     "What is JSX syntax?",
     "How to use props in React?",
@@ -371,10 +482,12 @@ function AIChat() {
     "What are React hooks?"
   ];
 
+  // Handle quick question selection
   const handleQuickQuestion = (question) => {
     setInputMessage(question);
   };
 
+  // Render closed chat button when chat is minimized
   if (!isOpen) {
     return (
       <div className="ai-chat-closed">
@@ -390,6 +503,7 @@ function AIChat() {
     );
   }
 
+  // Main chat interface
   return (
     <div className={`ai-chat-container ${isExpanded ? 'expanded' : ''}`}>
       {/* Chat Header */}
@@ -399,7 +513,7 @@ function AIChat() {
           <div>
             <h3>AI Assistant</h3>
             <span className="chat-subtitle">
-              {usePdfMode ? "PDF AI" : "DeepSeek AI"} | {userInfo?.username || 'Guest'}
+              {usePdfMode ? "PDF AI" : "Google Gemini 2.0"} | {userInfo?.username || 'Guest'}
             </span>
           </div>
         </div>
@@ -428,7 +542,7 @@ function AIChat() {
         </div>
       </div>
 
-      {/* Mode Toggle */}
+      {/* Mode Toggle Section */}
       <div className="mode-toggle-section">
         <div className="mode-toggle">
           <button 
@@ -436,7 +550,7 @@ function AIChat() {
             onClick={() => handleModeToggle(false)}
           >
             <FaBrain />
-            <span>DeepSeek AI</span>
+            <span>Google Gemini</span>
           </button>
           <button 
             className={`mode-btn ${usePdfMode ? 'active' : ''}`}
@@ -448,7 +562,7 @@ function AIChat() {
         </div>
       </div>
 
-      {/* PDF Upload Section - Only for PDF AI mode */}
+      {/* PDF Upload Section - Only visible in PDF AI mode */}
       {usePdfMode && (
         <div className="pdf-upload-section">
           <div className="upload-area">
@@ -513,7 +627,7 @@ function AIChat() {
         </div>
       )}
 
-      {/* Chat Messages */}
+      {/* Chat Messages Area */}
       <div className="chat-messages">
         {messages.map((message) => (
           <div
@@ -554,6 +668,7 @@ function AIChat() {
           </div>
         ))}
         
+        {/* Loading indicator */}
         {isLoading && (
           <div className="message ai loading">
             <div className="message-avatar">
@@ -569,10 +684,11 @@ function AIChat() {
           </div>
         )}
         
+        {/* Scroll anchor */}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Quick Questions - Only show in DeepSeek AI mode */}
+      {/* Quick Questions - Only show in Google Gemini mode for new conversations */}
       {!usePdfMode && messages.length <= 2 && (
         <div className="quick-questions">
           <div className="quick-questions-title">Quick Questions:</div>
@@ -602,7 +718,7 @@ function AIChat() {
         </div>
       )}
 
-      {/* Chat Input */}
+      {/* Chat Input Form */}
       <form className="chat-input-form" onSubmit={sendMessage}>
         <div className="input-container">
           <input
@@ -612,7 +728,7 @@ function AIChat() {
             placeholder={
               usePdfMode 
                 ? (pdfUploaded ? "Ask about your PDF content..." : "Upload a PDF first to ask questions...")
-                : "Ask DeepSeek AI anything..."
+                : "Ask Google Gemini anything..."
             }
             disabled={isLoading || (usePdfMode && !pdfUploaded)}
             className="chat-input"
