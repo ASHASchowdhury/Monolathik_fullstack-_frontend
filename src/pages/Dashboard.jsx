@@ -14,7 +14,8 @@ import {
   FaArrowDown,
   FaCog,
   FaSignOutAlt,
-  FaTasks
+  FaTasks,
+  FaComments
 } from "react-icons/fa";
 import EmployeeForm from "../components/EmployeeForm";
 import EmployeeList from "../components/EmployeeList";
@@ -22,6 +23,7 @@ import DepartmentForm from "../components/DepartmentFrom";
 import DepartmentList from "../components/DepartmentList";
 import TaskManager from "../components/TaskManager";
 import AIChat from '../components/AIChat';
+import TeamChat from '../components/TeamChat'; // ADD THIS
 import "../styles/Dashboard.css";
 
 function Dashboard({ user, onLogout }) {
@@ -46,7 +48,6 @@ function Dashboard({ user, onLogout }) {
 
   const API_BASE = "http://localhost:8080";
 
-  // FIXED: Proper authentication headers
   const getAuthConfig = () => {
     try {
       const userData = localStorage.getItem('user');
@@ -462,6 +463,17 @@ function Dashboard({ user, onLogout }) {
           </div>
         );
 
+      case "team-chat":  // ADD THIS CASE
+        return (
+          <div className="tab-content">
+            <div className="content-header">
+              <h2>Team Chat</h2>
+              <span className="active-count">Real-time messaging</span>
+            </div>
+            <TeamChat user={user} />
+          </div>
+        );
+
       default:
         return null;
     }
@@ -517,6 +529,16 @@ function Dashboard({ user, onLogout }) {
             <span className="nav-badge">{stats.totalTasks}</span>
           </button>
 
+          {/* ADD TEAM CHAT BUTTON */}
+          <button
+            className={`nav-item ${activeTab === "team-chat" ? "active" : ""}`}
+            onClick={() => setActiveTab("team-chat")}
+          >
+            <FaComments />
+            <span>Team Chat</span>
+            <span className="nav-badge live">Live</span>
+          </button>
+
           <button
             className={`nav-item ${activeTab === "active-employees" ? "active" : ""}`}
             onClick={() => setActiveTab("active-employees")}
@@ -545,6 +567,7 @@ function Dashboard({ user, onLogout }) {
               {activeTab === "departments" && "Department Management"}
               {activeTab === "tasks" && "Task Management"}
               {activeTab === "active-employees" && "Active Employees"}
+              {activeTab === "team-chat" && "Team Chat"} {/* ADD THIS */}
             </h1>
             <p className="header-subtitle">
               {activeTab === "dashboard" && "Welcome to your HR Dashboard"}
@@ -552,6 +575,7 @@ function Dashboard({ user, onLogout }) {
               {activeTab === "departments" && "Organize your departments"}
               {activeTab === "tasks" && "Assign and track tasks"}
               {activeTab === "active-employees" && "Currently active team members"}
+              {activeTab === "team-chat" && "Real-time team communication"} {/* ADD THIS */}
             </p>
           </div>
           <div className="header-right">
@@ -597,7 +621,7 @@ function Dashboard({ user, onLogout }) {
         </main>
       </div>
 
-      {/* AI Chat Component - ADDED HERE */}
+      {/* AI Chat Component */}
       <AIChat />
     </div>
   );
