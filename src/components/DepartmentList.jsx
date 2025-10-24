@@ -58,7 +58,7 @@ function DepartmentList({ departments, onDepartmentDeleted, onEditDepartment }) 
   return (
     <div className="department-list">
       <div className="list-header">
-        <h2>Department Management</h2>
+     
         <span className="department-count">{departments.length} departments</span>
       </div>
       

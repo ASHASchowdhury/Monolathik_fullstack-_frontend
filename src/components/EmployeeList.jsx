@@ -28,14 +28,26 @@ function EmployeeList({ employees, onEmployeeDeleted, onEditEmployee }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
+  // FIXED: Proper authentication headers
   const getAuthConfig = () => {
-    const user = JSON.parse(localStorage.getItem('user'));
-    return {
-      headers: {
-        'X-Username': user?.username || '',
-        'X-Role': user?.role || 'USER'
+    try {
+      const userData = localStorage.getItem('user');
+      if (!userData) {
+        console.warn('No user data found in localStorage');
+        return { headers: {} };
       }
-    };
+      
+      const user = JSON.parse(userData);
+      return {
+        headers: {
+          'X-Username': user.username || '',
+          'X-Role': user.role || 'USER'
+        }
+      };
+    } catch (error) {
+      console.error('Error getting auth config:', error);
+      return { headers: {} };
+    }
   };
 
   const filteredEmployees = employees.filter(emp => {
@@ -54,7 +66,11 @@ function EmployeeList({ employees, onEmployeeDeleted, onEditEmployee }) {
       onEmployeeDeleted();
     } catch (err) {
       console.error("Error deleting employee:", err);
-      alert("Error deleting employee: " + (err.response?.data?.message || err.message));
+      if (err.response?.status === 403) {
+        alert("Access denied: You don't have permission to delete employees.");
+      } else {
+        alert("Error deleting employee: " + (err.response?.data?.message || err.message));
+      }
     }
   };
 
@@ -106,7 +122,7 @@ function EmployeeList({ employees, onEmployeeDeleted, onEditEmployee }) {
       <div className="list-header">
         <div className="header-content">
           <div className="header-title">
-            <h2>Employee Management</h2>
+            <h2></h2>
             <span className="employee-count">{filteredEmployees.length} of {employees.length} employees</span>
           </div>
           <div className="header-actions">

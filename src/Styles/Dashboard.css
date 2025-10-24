@@ -2,13 +2,13 @@
 .dashboard-container {
   display: flex;
   min-height: 100vh;
-  background-color: #f8fafc;
+  background-color: #d8d8fd;
 }
 
 /* Sidebar - FIXED */
 .dashboard-sidebar {
   width: 280px;
-  background: linear-gradient(135deg, #233588 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #2c2e3b 0%, #18065a 100%);
   color: white;
   transition: all 0.3s ease;
   position: fixed;
@@ -566,19 +566,19 @@
 }
 
 .stat-icon.total {
-  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  background: linear-gradient(135deg, #3b82f6 0%, #112e7e 100%);
 }
 
 .stat-icon.pending {
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  background: linear-gradient(135deg, #cf2a1f 0%, #3f0606 100%);
 }
 
 .stat-icon.in-progress {
-  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  background: linear-gradient(135deg, #cef63b 0%, #646303 100%);
 }
 
 .stat-icon.completed {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  background: linear-gradient(135deg, #10b981 0%, #054430 100%);
 }
 
 .stat-info {

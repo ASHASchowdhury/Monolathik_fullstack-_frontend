@@ -386,7 +386,7 @@ function Dashboard({ user, onLogout }) {
         return (
           <div className="tab-content">
             <div className="content-header">
-              <h2>Employee Management</h2>
+              <h1>SmartDesk</h1>
               <button 
                 className="add-btn"
                 onClick={() => setEditingEmployee({})}
@@ -414,7 +414,7 @@ function Dashboard({ user, onLogout }) {
         return (
           <div className="tab-content">
             <div className="content-header">
-              <h2>Department Management</h2>
+              <h1>SmartDesk</h1>
               <button 
                 className="add-btn"
                 onClick={() => setEditingDepartment({})}
@@ -442,7 +442,7 @@ function Dashboard({ user, onLogout }) {
         return (
           <div className="tab-content">
             <div className="content-header">
-              <h2>Active Employees</h2>
+              <h1>SmartDesk</h1>
               <span className="active-count">{stats.activeEmployees} Active Employees</span>
             </div>
             <EmployeeList
@@ -457,7 +457,7 @@ function Dashboard({ user, onLogout }) {
         return (
           <div className="tab-content">
             <div className="content-header">
-              <h2>Task Management</h2>
+              <h1>SmartDesk</h1>
             </div>
             <TaskManager user={user} />
           </div>
@@ -467,7 +467,7 @@ function Dashboard({ user, onLogout }) {
         return (
           <div className="tab-content">
             <div className="content-header">
-              <h2>Team Chat</h2>
+              <h1>SmartDesk</h1>
               <span className="active-count">Real-time messaging</span>
             </div>
             <TeamChat user={user} />
@@ -484,7 +484,7 @@ function Dashboard({ user, onLogout }) {
       {/* Sidebar */}
       <div className="dashboard-sidebar">
         <div className="sidebar-header">
-          <h2>HR Dashboard</h2>
+          <h2>SmartDesk</h2>
           <button 
             className="sidebar-toggle"
             onClick={() => setSidebarOpen(!sidebarOpen)}

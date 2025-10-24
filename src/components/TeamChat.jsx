@@ -1,6 +1,6 @@
 // src/components/TeamChat.js
 import React, { useState, useEffect, useRef } from 'react';
-import { FaPaperPlane, FaUser, FaCircle, FaUsers, FaCrown, FaUserTie, FaUserShield, FaUserAlt, FaExclamationTriangle } from 'react-icons/fa';
+import { FaPaperPlane, FaUser, FaCircle, FaUsers, FaCrown, FaUserTie, FaUserShield, FaUserAlt, FaExclamationTriangle, FaMoon, FaSun } from 'react-icons/fa';
 import { Client } from '@stomp/stompjs';
 import './TeamChat.css';
 
@@ -12,7 +12,9 @@ const TeamChat = ({ user }) => {
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(false);
   const [connectionError, setConnectionError] = useState('');
+  const [darkMode, setDarkMode] = useState(true);
   const messagesEndRef = useRef(null);
+  const subscriptionRef = useRef(null);
 
   const rooms = [
     { id: 1, name: 'General Chat', description: 'Company-wide discussions', allowedRoles: ['HR', 'PROJECT_MANAGER', 'DIRECTOR', 'CTO', 'USER'] },
@@ -21,7 +23,34 @@ const TeamChat = ({ user }) => {
     { id: 4, name: 'Management', description: 'Management team', allowedRoles: ['DIRECTOR', 'CTO', 'HR'] }
   ];
 
-  // Check if user can access room - FIXED VERSION
+  // Get proper display names for roles
+  const getRoleDisplayName = (role) => {
+    const roleNames = {
+      'DIRECTOR': 'Director',
+      'HR': 'HR Manager', 
+      'CTO': 'CTO',
+      'PROJECT_MANAGER': 'Project Manager',
+      'USER': 'Team Member'
+    };
+    return roleNames[role] || role;
+  };
+
+  // Get user display name for current user
+  const getUserDisplayName = () => {
+    return user?.username || user?.name || getRoleDisplayName(user?.role);
+  };
+
+  // Get sender display name from message
+  const getSenderDisplayName = (message) => {
+    // Use senderName from backend if available
+    if (message.senderName) {
+      return message.senderName;
+    }
+    // Fallback to role-based name
+    return getRoleDisplayName(message.senderRole);
+  };
+
+  // Check if user can access room
   const canAccessRoom = (room) => {
     if (!room || !user?.role) return false;
     return room.allowedRoles.includes(user.role);
@@ -42,28 +71,38 @@ const TeamChat = ({ user }) => {
   // Get role color
   const getRoleColor = (role) => {
     const colors = {
-      'DIRECTOR': '#F59E0B',
-      'HR': '#EF4444',
-      'CTO': '#3B82F6',
-      'PROJECT_MANAGER': '#10B981',
-      'USER': '#6B7280',
-      'SYSTEM': '#8B5CF6'
+      'DIRECTOR': '#FF6B35',
+      'HR': '#00A8E8', 
+      'CTO': '#9C27B0',
+      'PROJECT_MANAGER': '#4CAF50',
+      'USER': '#607D8B'
     };
-    return colors[role] || '#6B7280';
+    return colors[role] || '#607D8B';
   };
 
-  // Initialize WebSocket connection - NATIVE WEBSOCKET
+  // Get connection headers with username
+  const getConnectionHeaders = () => {
+    return {
+      'X-Role': user?.role || 'USER',
+      'X-Username': getUserDisplayName()
+    };
+  };
+
+  // Initialize WebSocket connection
   const connectWebSocket = () => {
     try {
       console.log('🔌 Connecting to WebSocket...');
       setConnectionError('');
       
-      // Use native WebSocket (remove SockJS)
       const client = new Client({
-        brokerURL: 'ws://localhost:8080/ws-chat/websocket', // Native WebSocket endpoint
+        brokerURL: 'ws://localhost:8080/ws-chat/websocket',
         reconnectDelay: 5000,
         heartbeatIncoming: 4000,
         heartbeatOutgoing: 4000,
+        
+        // ADD CONNECTION HEADERS with username
+        connectHeaders: getConnectionHeaders(),
+        
         debug: (str) => {
           console.log('STOMP Debug:', str);
         },
@@ -82,13 +121,6 @@ const TeamChat = ({ user }) => {
           console.error('❌ WebSocket error:', error);
           setConnectionError('Failed to connect to chat server. Make sure backend is running on port 8080.');
           setConnected(false);
-          
-          // Try alternative endpoint after 2 seconds
-          setTimeout(() => {
-            if (!connected) {
-              connectWithAlternativeEndpoint();
-            }
-          }, 2000);
         },
         onDisconnect: () => {
           console.log('🔌 WebSocket disconnected');
@@ -106,33 +138,6 @@ const TeamChat = ({ user }) => {
     }
   };
 
-  // Alternative connection method
-  const connectWithAlternativeEndpoint = () => {
-    try {
-      console.log('🔄 Trying alternative WebSocket endpoint...');
-      
-      const client = new Client({
-        brokerURL: 'ws://localhost:8080/ws-chat', // Try without /websocket
-        reconnectDelay: 5000,
-        onConnect: () => {
-          console.log('✅ Connected via alternative endpoint');
-          setConnected(true);
-          setConnectionError('');
-          subscribeToRoom(currentRoom);
-        },
-        onWebSocketError: (error) => {
-          console.error('❌ Alternative endpoint also failed:', error);
-          setConnectionError('Both WebSocket endpoints failed. Check if Spring Boot is running.');
-        }
-      });
-
-      client.activate();
-      setStompClient(client);
-    } catch (error) {
-      console.error('❌ Alternative connection failed:', error);
-    }
-  };
-
   // Subscribe to a specific room
   const subscribeToRoom = (roomId) => {
     if (!stompClient || !stompClient.connected) {
@@ -141,12 +146,38 @@ const TeamChat = ({ user }) => {
     }
 
     try {
-      stompClient.subscribe(`/topic/chat/${roomId}`, (message) => {
+      // Unsubscribe from previous subscription to prevent duplicates
+      if (subscriptionRef.current) {
+        subscriptionRef.current.unsubscribe();
+        console.log('🔴 Unsubscribed from previous room');
+      }
+
+      subscriptionRef.current = stompClient.subscribe(`/topic/chat/${roomId}`, (message) => {
         console.log('📨 Received message:', message);
-        const newMessage = JSON.parse(message.body);
-        setMessages(prev => [newMessage, ...prev]);
+        try {
+          const newMessage = JSON.parse(message.body);
+          
+          // Check if message already exists to prevent duplicates
+          setMessages(prev => {
+            const messageExists = prev.some(msg => 
+              msg.id === newMessage.id || 
+              (msg.content === newMessage.content && 
+               msg.senderRole === newMessage.senderRole && 
+               Math.abs(new Date(msg.timestamp) - new Date(newMessage.timestamp)) < 1000)
+            );
+            
+            if (!messageExists) {
+              return [newMessage, ...prev];
+            }
+            return prev;
+          });
+        } catch (error) {
+          console.error('❌ Error parsing message:', error);
+        }
       });
+      
       console.log(`✅ Subscribed to room ${roomId}`);
+      
     } catch (error) {
       console.error('❌ Subscription error:', error);
     }
@@ -158,7 +189,9 @@ const TeamChat = ({ user }) => {
       setLoading(true);
       console.log(`📡 Fetching messages for room ${roomId}`);
       
-      const response = await fetch(`http://localhost:8080/chat/messages/${roomId}`);
+      const response = await fetch(`http://localhost:8080/chat/messages/${roomId}`, {
+        headers: getConnectionHeaders()
+      });
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -188,7 +221,9 @@ const TeamChat = ({ user }) => {
     const messageData = {
       content: newMessage.trim(),
       senderRole: user?.role || 'USER',
-      roomId: currentRoom
+      senderName: getUserDisplayName(), // Use proper name
+      roomId: currentRoom,
+      timestamp: new Date().toISOString()
     };
 
     console.log('📤 Sending message:', messageData);
@@ -207,7 +242,7 @@ const TeamChat = ({ user }) => {
     }
   };
 
-  // Handle room change - UPDATED
+  // Handle room change
   const handleRoomChange = (roomId) => {
     const targetRoom = rooms.find(r => r.id === roomId);
     
@@ -244,6 +279,11 @@ const TeamChat = ({ user }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  // Toggle dark mode
+  const toggleDarkMode = () => {
+    setDarkMode(!darkMode);
+  };
+
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
@@ -253,6 +293,9 @@ const TeamChat = ({ user }) => {
     connectWebSocket();
 
     return () => {
+      if (subscriptionRef.current) {
+        subscriptionRef.current.unsubscribe();
+      }
       if (stompClient) {
         stompClient.deactivate();
       }
@@ -294,44 +337,53 @@ const TeamChat = ({ user }) => {
   const messageGroups = groupMessagesByDate(messages);
 
   return (
-    <div className="team-chat-container">
-      <div className="chat-layout">
+    <div className={`team-chat-app ${darkMode ? 'chat-dark' : 'chat-light'}`}>
+      <div className="chat-app-layout">
         {/* Sidebar with rooms */}
-        <div className="chat-sidebar">
-          <div className="sidebar-header">
-            <h3>Chat Rooms</h3>
-            <div className="connection-status">
-              <FaCircle className={connected ? 'status-connected' : 'status-disconnected'} />
-              <span>{connected ? 'Connected' : 'Disconnected'}</span>
+        <div className="chat-app-sidebar">
+          <div className="chat-sidebar-header">
+            <div className="chat-header-top">
+              <h3 className="chat-sidebar-title">Chat Rooms</h3>
+              <button 
+                className="chat-theme-toggle"
+                onClick={toggleDarkMode}
+                title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+              >
+                {darkMode ? <FaSun /> : <FaMoon />}
+              </button>
+            </div>
+            <div className="chat-connection-status">
+              <FaCircle className={connected ? 'chat-status-connected' : 'chat-status-disconnected'} />
+              <span className="chat-status-text">{connected ? 'Connected' : 'Disconnected'}</span>
             </div>
           </div>
           
-          <div className="room-list">
+          <div className="chat-room-list">
             {rooms.map(room => {
               const canAccess = canAccessRoom(room);
               return (
                 <div
                   key={room.id}
-                  className={`room-item ${currentRoom === room.id ? 'active' : ''} ${!canAccess ? 'disabled' : ''}`}
+                  className={`chat-room-item ${currentRoom === room.id ? 'chat-room-active' : ''} ${!canAccess ? 'chat-room-disabled' : ''}`}
                   onClick={() => canAccess && handleRoomChange(room.id)}
                   title={!canAccess ? 'You do not have access to this room' : ''}
                 >
                   <div 
-                    className="room-color" 
+                    className="chat-room-color" 
                     style={{ backgroundColor: getRoleColor(room.allowedRoles[0]) }}
                   ></div>
-                  <div className="room-info">
-                    <div className="room-name">
+                  <div className="chat-room-info">
+                    <div className="chat-room-name">
                       {room.name}
-                      {!canAccess && <span className="access-restricted"> 🔒</span>}
+                      {!canAccess && <span className="chat-room-lock"> 🔒</span>}
                     </div>
-                    <div className="room-description">{room.description}</div>
-                    <div className="room-roles">
-                      {room.allowedRoles.join(', ')}
+                    <div className="chat-room-desc">{room.description}</div>
+                    <div className="chat-room-roles">
+                      {room.allowedRoles.map(role => getRoleDisplayName(role)).join(', ')}
                     </div>
                   </div>
                   {currentRoom === room.id && (
-                    <div className="active-indicator"></div>
+                    <div className="chat-active-indicator"></div>
                   )}
                 </div>
               );
@@ -340,26 +392,27 @@ const TeamChat = ({ user }) => {
 
           {/* Connection Error Display */}
           {connectionError && (
-            <div className="connection-error">
+            <div className="chat-connection-error">
               <FaExclamationTriangle />
-              <div className="error-message">
+              <div className="chat-error-message">
                 <strong>Connection Issue:</strong>
                 <span>{connectionError}</span>
               </div>
             </div>
           )}
 
-          <div className="user-profile-sidebar">
+          <div className="chat-user-profile">
             <div 
-              className="user-avatar"
+              className="chat-user-avatar"
               style={{ backgroundColor: getRoleColor(user?.role) }}
             >
               {React.createElement(getRoleIcon(user?.role))}
             </div>
-            <div className="user-details">
-              <div className="user-role-main">{user?.role || 'USER'}</div>
-              <div className="user-status">
-                <FaCircle className={connected ? 'status-online' : 'status-offline'} />
+            <div className="chat-user-details">
+              <div className="chat-user-name">{getUserDisplayName()}</div>
+              <div className="chat-user-role">{getRoleDisplayName(user?.role)}</div>
+              <div className="chat-user-status">
+                <FaCircle className={connected ? 'chat-status-online' : 'chat-status-offline'} />
                 {connected ? 'Online' : 'Offline'}
               </div>
             </div>
@@ -367,37 +420,37 @@ const TeamChat = ({ user }) => {
         </div>
 
         {/* Main chat area */}
-        <div className="chat-main">
-          <div className="chat-header">
-            <div className="room-header">
-              <h2>{rooms.find(r => r.id === currentRoom)?.name}</h2>
-              <p>{rooms.find(r => r.id === currentRoom)?.description}</p>
-              <div className="room-access-info">
-                Access: {rooms.find(r => r.id === currentRoom)?.allowedRoles.join(', ')}
+        <div className="chat-app-main">
+          <div className="chat-main-header">
+            <div className="chat-current-room">
+              <h2 className="chat-room-title">{rooms.find(r => r.id === currentRoom)?.name}</h2>
+              <p className="chat-room-subtitle">{rooms.find(r => r.id === currentRoom)?.description}</p>
+              <div className="chat-room-access">
+                Access: {rooms.find(r => r.id === currentRoom)?.allowedRoles.map(role => getRoleDisplayName(role)).join(', ')}
               </div>
             </div>
-            <div className="online-count">
+            <div className="chat-online-indicator">
               <FaUsers />
               <span>Status: {connected ? 'Connected' : 'Disconnected'}</span>
             </div>
           </div>
 
-          <div className="messages-container">
+          <div className="chat-messages-area">
             {loading ? (
-              <div className="loading-messages">
-                <div className="loading-spinner"></div>
-                <p>Loading messages...</p>
+              <div className="chat-loading">
+                <div className="chat-loading-spinner"></div>
+                <p className="chat-loading-text">Loading messages...</p>
               </div>
             ) : (
               <>
-                <div className="messages-list">
+                <div className="chat-messages-list">
                   {messages.length === 0 ? (
-                    <div className="no-messages">
-                      <FaUsers className="no-messages-icon" />
-                      <h3>No messages yet</h3>
-                      <p>Be the first to start the conversation!</p>
+                    <div className="chat-no-messages">
+                      <FaUsers className="chat-no-messages-icon" />
+                      <h3 className="chat-no-messages-title">No messages yet</h3>
+                      <p className="chat-no-messages-desc">Be the first to start the conversation!</p>
                       {!connected && (
-                        <p className="connection-hint">
+                        <p className="chat-connection-hint">
                           Make sure your backend is running on http://localhost:8080
                         </p>
                       )}
@@ -405,35 +458,38 @@ const TeamChat = ({ user }) => {
                   ) : (
                     Object.entries(messageGroups).map(([date, dateMessages]) => (
                       <div key={date}>
-                        <div className="date-divider">
+                        <div className="chat-date-divider">
                           <span>{date}</span>
                         </div>
                         {dateMessages.map(message => {
                           const RoleIcon = getRoleIcon(message.senderRole);
                           const isOwnMessage = message.senderRole === user?.role;
+                          const senderDisplayName = getSenderDisplayName(message);
                           
                           return (
                             <div
-                              key={message.id}
-                              className={`message ${isOwnMessage ? 'own-message' : ''}`}
+                              key={message.id || `${message.timestamp}-${message.content}`}
+                              className={`chat-message ${isOwnMessage ? 'chat-message-own' : ''}`}
                             >
                               <div 
-                                className="message-avatar"
+                                className="chat-message-avatar"
                                 style={{ backgroundColor: getRoleColor(message.senderRole) }}
                               >
                                 <RoleIcon />
                               </div>
-                              <div className="message-content">
-                                <div className="message-header">
-                                  <span className="sender-role">
-                                    {message.senderRole}
-                                    {isOwnMessage && ' (You)'}
-                                  </span>
-                                  <span className="message-time">
+                              <div className="chat-message-content">
+                                <div className="chat-message-header">
+                                  <span className="chat-sender-name">{senderDisplayName}</span>
+                                  {!isOwnMessage && (
+                                    <span className="chat-sender-role">
+                                      {getRoleDisplayName(message.senderRole)}
+                                    </span>
+                                  )}
+                                  <span className="chat-message-time">
                                     {formatTime(message.timestamp)}
                                   </span>
                                 </div>
-                                <div className="message-text">{message.content}</div>
+                                <div className="chat-message-text">{message.content}</div>
                               </div>
                             </div>
                           );
@@ -447,32 +503,32 @@ const TeamChat = ({ user }) => {
             )}
           </div>
 
-          <div className="message-input-container">
-            <div className="input-wrapper">
+          <div className="chat-input-section">
+            <div className="chat-input-wrapper">
               <input
                 type="text"
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder={connected 
-                  ? `Type your message as ${user?.role || 'USER'}...` 
+                  ? `Type your message as ${getUserDisplayName()}...` 
                   : 'Connecting to chat server...'
                 }
                 disabled={!connected}
-                className="message-input"
+                className="chat-message-input"
               />
               <button
                 onClick={sendMessage}
                 disabled={!newMessage.trim() || !connected}
-                className="send-button"
+                className="chat-send-button"
                 style={{ backgroundColor: getRoleColor(user?.role) }}
               >
                 <FaPaperPlane />
               </button>
             </div>
-            <div className="input-hint">
+            <div className="chat-input-hint">
               {connected 
-                ? `Press Enter to send • You are chatting as: ${user?.role || 'USER'}`
+                ? `Press Enter to send • You are chatting as: ${getUserDisplayName()}`
                 : 'Trying to connect to chat server...'
               }
             </div>
