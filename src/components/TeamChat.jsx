@@ -1,7 +1,8 @@
 // src/components/TeamChat.js
 import React, { useState, useEffect, useRef } from 'react';
-import { FaPaperPlane, FaUser, FaCircle, FaUsers, FaCrown, FaUserTie, FaUserShield, FaUserAlt, FaExclamationTriangle, FaMoon, FaSun } from 'react-icons/fa';
+import { FaPaperPlane, FaUser, FaCircle, FaUsers, FaCrown, FaUserTie, FaUserShield, FaUserAlt, FaExclamationTriangle, FaMoon, FaSun, FaImage, FaSmile, FaTimes } from 'react-icons/fa';
 import { Client } from '@stomp/stompjs';
+import EmojiPicker from 'emoji-picker-react';
 import './TeamChat.css';
 
 const TeamChat = ({ user }) => {
@@ -13,8 +14,14 @@ const TeamChat = ({ user }) => {
   const [loading, setLoading] = useState(false);
   const [connectionError, setConnectionError] = useState('');
   const [darkMode, setDarkMode] = useState(true);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const messagesEndRef = useRef(null);
   const subscriptionRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const emojiPickerRef = useRef(null);
 
   const rooms = [
     { id: 1, name: 'General Chat', description: 'Company-wide discussions', allowedRoles: ['HR', 'PROJECT_MANAGER', 'DIRECTOR', 'CTO', 'USER'] },
@@ -22,6 +29,17 @@ const TeamChat = ({ user }) => {
     { id: 3, name: 'IT Department', description: 'Technical discussions', allowedRoles: ['CTO', 'PROJECT_MANAGER'] },
     { id: 4, name: 'Management', description: 'Management team', allowedRoles: ['DIRECTOR', 'CTO', 'HR'] }
   ];
+
+  // Close emoji picker when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target)) {
+        setShowEmojiPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Get proper display names for roles
   const getRoleDisplayName = (role) => {
@@ -42,11 +60,9 @@ const TeamChat = ({ user }) => {
 
   // Get sender display name from message
   const getSenderDisplayName = (message) => {
-    // Use senderName from backend if available
     if (message.senderName) {
       return message.senderName;
     }
-    // Fallback to role-based name
     return getRoleDisplayName(message.senderRole);
   };
 
@@ -86,6 +102,161 @@ const TeamChat = ({ user }) => {
       'X-Role': user?.role || 'USER',
       'X-Username': getUserDisplayName()
     };
+  };
+
+  // Handle image selection
+  const handleImageSelect = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        alert('Please select an image file');
+        return;
+      }
+
+      // Validate file size (5MB limit)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Image size should be less than 5MB');
+        return;
+      }
+
+      setSelectedImage(file);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Remove selected image
+  const removeSelectedImage = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // Upload image to backend
+  const uploadImage = async (file) => {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('http://localhost:8080/api/files/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to upload image');
+      }
+
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      console.error('Image upload error:', error);
+      throw error;
+    }
+  };
+
+  // Add emoji to message
+  const addEmoji = (emojiData) => {
+    setNewMessage(prev => prev + emojiData.emoji);
+    setShowEmojiPicker(false);
+  };
+
+  // Toggle emoji picker
+  const toggleEmojiPicker = () => {
+    setShowEmojiPicker(!showEmojiPicker);
+  };
+
+  // Send message via WebSocket
+  const sendMessage = async () => {
+    if ((!newMessage.trim() && !selectedImage) || !stompClient || !connected) {
+      if (!selectedImage) {
+        setConnectionError('Not connected to chat server. Please wait for connection.');
+      }
+      return;
+    }
+
+    try {
+      setUploading(true);
+      let imageUrl = null;
+      let imageName = null;
+
+      // Upload image if selected
+      if (selectedImage) {
+        const uploadResult = await uploadImage(selectedImage);
+        imageUrl = `http://localhost:8080/api/files/download/${uploadResult.fileName}`;
+        imageName = selectedImage.name;
+      }
+
+      const messageData = {
+        content: newMessage.trim(),
+        senderRole: user?.role || 'USER',
+        senderName: getUserDisplayName(),
+        roomId: currentRoom,
+        timestamp: new Date().toISOString(),
+        imageUrl: imageUrl,
+        imageName: imageName,
+        messageType: selectedImage ? 'IMAGE' : 'TEXT'
+      };
+
+      console.log('📤 Sending message:', messageData);
+
+      stompClient.publish({
+        destination: '/app/chat.send',
+        body: JSON.stringify(messageData)
+      });
+
+      // Reset form
+      setNewMessage('');
+      removeSelectedImage();
+      setShowEmojiPicker(false);
+      
+    } catch (error) {
+      console.error('❌ Error sending message:', error);
+      setConnectionError('Failed to send message. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Render message content based on type
+  const renderMessageContent = (message) => {
+    if (message.messageType === 'IMAGE' && message.imageUrl) {
+      return (
+        <div className="chat-image-message">
+          <img 
+            src={message.imageUrl} 
+            alt={message.imageName || 'Shared image'}
+            className="chat-image"
+            onError={(e) => {
+              e.target.style.display = 'none';
+              e.target.nextSibling.style.display = 'block';
+            }}
+          />
+          <div className="chat-image-fallback" style={{display: 'none'}}>
+            📷 Image: {message.imageName || 'Unavailable'}
+          </div>
+          {message.content && (
+            <div className="chat-image-caption">
+              {message.content}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <div className="chat-message-text">
+        {message.content}
+      </div>
+    );
   };
 
   // Initialize WebSocket connection
@@ -207,38 +378,6 @@ const TeamChat = ({ user }) => {
       setMessages([]);
     } finally {
       setLoading(false);
-    }
-  };
-
-  // Send message via WebSocket
-  const sendMessage = () => {
-    if (!newMessage.trim()) return;
-    if (!stompClient || !connected) {
-      setConnectionError('Not connected to chat server. Please wait for connection.');
-      return;
-    }
-
-    const messageData = {
-      content: newMessage.trim(),
-      senderRole: user?.role || 'USER',
-      senderName: getUserDisplayName(), // Use proper name
-      roomId: currentRoom,
-      timestamp: new Date().toISOString()
-    };
-
-    console.log('📤 Sending message:', messageData);
-
-    try {
-      stompClient.publish({
-        destination: '/app/chat.send',
-        body: JSON.stringify(messageData)
-      });
-      
-      setNewMessage('');
-      
-    } catch (error) {
-      console.error('❌ Error sending message:', error);
-      setConnectionError('Failed to send message. Please try again.');
     }
   };
 
@@ -489,7 +628,7 @@ const TeamChat = ({ user }) => {
                                     {formatTime(message.timestamp)}
                                   </span>
                                 </div>
-                                <div className="chat-message-text">{message.content}</div>
+                                {renderMessageContent(message)}
                               </div>
                             </div>
                           );
@@ -503,8 +642,57 @@ const TeamChat = ({ user }) => {
             )}
           </div>
 
+          {/* Image Preview */}
+          {imagePreview && (
+            <div className="chat-image-preview">
+              <div className="image-preview-content">
+                <img src={imagePreview} alt="Preview" className="preview-image" />
+                <button 
+                  className="remove-image-btn"
+                  onClick={removeSelectedImage}
+                  title="Remove image"
+                >
+                  <FaTimes />
+                </button>
+              </div>
+              <div className="image-preview-info">
+                <span>{selectedImage?.name}</span>
+                <span>{Math.round(selectedImage?.size / 1024)} KB</span>
+              </div>
+            </div>
+          )}
+
           <div className="chat-input-section">
             <div className="chat-input-wrapper">
+              {/* Hidden file input */}
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleImageSelect}
+                accept="image/*"
+                style={{ display: 'none' }}
+              />
+              
+              {/* Image upload button */}
+              <button
+                className="chat-image-button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={!connected || uploading}
+                title="Upload image"
+              >
+                <FaImage />
+              </button>
+
+              {/* Emoji picker button */}
+              <button
+                className="chat-emoji-button"
+                onClick={toggleEmojiPicker}
+                disabled={!connected || uploading}
+                title="Add emoji"
+              >
+                <FaSmile />
+              </button>
+
               <input
                 type="text"
                 value={newMessage}
@@ -514,18 +702,41 @@ const TeamChat = ({ user }) => {
                   ? `Type your message as ${getUserDisplayName()}...` 
                   : 'Connecting to chat server...'
                 }
-                disabled={!connected}
+                disabled={!connected || uploading}
                 className="chat-message-input"
               />
+              
               <button
                 onClick={sendMessage}
-                disabled={!newMessage.trim() || !connected}
+                disabled={(!newMessage.trim() && !selectedImage) || !connected || uploading}
                 className="chat-send-button"
                 style={{ backgroundColor: getRoleColor(user?.role) }}
               >
-                <FaPaperPlane />
+                {uploading ? (
+                  <div className="loading-dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </div>
+                ) : (
+                  <FaPaperPlane />
+                )}
               </button>
             </div>
+
+            {/* Emoji Picker */}
+            {showEmojiPicker && (
+              <div ref={emojiPickerRef} className="chat-emoji-picker">
+                <EmojiPicker 
+                  onEmojiClick={addEmoji}
+                  searchDisabled={false}
+                  skinTonesDisabled={true}
+                  width="100%"
+                  height="350px"
+                />
+              </div>
+            )}
+
             <div className="chat-input-hint">
               {connected 
                 ? `Press Enter to send • You are chatting as: ${getUserDisplayName()}`
