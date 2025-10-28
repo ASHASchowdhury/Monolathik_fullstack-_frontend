@@ -8,37 +8,77 @@ function DepartmentList({ departments, onDepartmentDeleted, onEditDepartment }) 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState({ show: false, deptId: null });
 
-  // FIXED: Proper authentication headers
+  // Fixed authentication headers
   const getAuthConfig = () => {
     try {
       const userData = localStorage.getItem('user');
       if (!userData) {
-        console.warn('No user data found in localStorage');
         return { headers: {} };
       }
       
       const user = JSON.parse(userData);
+      
+      // Ensure proper role format (remove ROLE_ prefix if present)
+      let userRole = user.role || 'USER';
+      if (userRole.startsWith('ROLE_')) {
+        userRole = userRole.replace('ROLE_', '');
+      }
+      
       return {
         headers: {
-          'X-Username': user.username || '',
-          'X-Role': user.role || 'USER'
+          'X-Username': user.username || user.name || '',
+          'X-Role': userRole,
+          'Content-Type': 'application/json'
         }
       };
-    } catch (error) {
-      console.error('Error getting auth config:', error);
+    } catch {
       return { headers: {} };
+    }
+  };
+
+  // Check if user has permission to delete
+  const canDeleteDepartment = () => {
+    try {
+      const userData = localStorage.getItem('user');
+      if (!userData) return false;
+      
+      const user = JSON.parse(userData);
+      let userRole = user.role || 'USER';
+      
+      // Remove ROLE_ prefix for comparison
+      if (userRole.startsWith('ROLE_')) {
+        userRole = userRole.replace('ROLE_', '');
+      }
+      
+      // Only HR, DIRECTOR, and CTO can delete departments
+      const allowedRoles = ['HR', 'DIRECTOR', 'CTO'];
+      return allowedRoles.includes(userRole.toUpperCase());
+    } catch  {
+      return false;
     }
   };
 
   const deleteDepartment = async (id) => {
     try {
+      // Check permissions first
+      if (!canDeleteDepartment()) {
+        alert("Access denied: You don't have permission to delete departments. Only HR, Director, and CTO can delete departments.");
+        return;
+      }
+
       const config = getAuthConfig();
-      await axios.delete(`http://localhost:8080/departments/${id}`, config);
-      onDepartmentDeleted();
+      const response = await axios.delete(`http://localhost:8080/departments/${id}`, config);
+      
+      if (response.status === 200) {
+        onDepartmentDeleted();
+        alert('Department deleted successfully');
+      }
     } catch (err) {
-      console.error("Error deleting department:", err);
       if (err.response?.status === 403) {
-        alert("Access denied: You don't have permission to delete departments.");
+        alert("Access denied: Your account doesn't have sufficient permissions to delete departments.");
+      } else if (err.response?.status === 500) {
+        const errorMessage = err.response?.data?.message || err.response?.data || "Cannot delete department - it may have employees assigned";
+        alert("Cannot delete department: " + errorMessage);
       } else {
         alert("Error deleting department: " + (err.response?.data?.message || err.message));
       }
@@ -58,7 +98,6 @@ function DepartmentList({ departments, onDepartmentDeleted, onEditDepartment }) 
   return (
     <div className="department-list">
       <div className="list-header">
-     
         <span className="department-count">{departments.length} departments</span>
       </div>
       
@@ -105,13 +144,16 @@ function DepartmentList({ departments, onDepartmentDeleted, onEditDepartment }) 
                       <FaEye />
                     </button>
                     
-                    <button
-                      className="action-btn delete-btn"
-                      onClick={() => setConfirmDelete({ show: true, deptId: dept.id })}
-                      title="Delete Department"
-                    >
-                      <FaTrash />
-                    </button>
+                    {/* Only show delete button if user has permission */}
+                    {canDeleteDepartment() && (
+                      <button
+                        className="action-btn delete-btn"
+                        onClick={() => setConfirmDelete({ show: true, deptId: dept.id })}
+                        title="Delete Department"
+                      >
+                        <FaTrash />
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -238,7 +280,12 @@ function DepartmentList({ departments, onDepartmentDeleted, onEditDepartment }) 
                 <FaTrash />
               </div>
               <p>Are you sure you want to delete this department?</p>
-              <p className="warning-text">This action cannot be undone.</p>
+              <p className="warning-text">
+                {departments.find(d => d.id === confirmDelete.deptId)?.employeeNames?.length > 0 
+                  ? "Warning: This department has employees assigned. They will need to be reassigned first."
+                  : "This action cannot be undone."
+                }
+              </p>
             </div>
 
             <div className="modal-footer">

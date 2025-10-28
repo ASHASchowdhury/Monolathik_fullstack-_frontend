@@ -206,7 +206,7 @@ const TeamChat = ({ user }) => {
         messageType: selectedImage ? 'IMAGE' : 'TEXT'
       };
 
-      console.log('📤 Sending message:', messageData);
+      console.log('📤 Sending message to room:', currentRoom, messageData);
 
       stompClient.publish({
         destination: '/app/chat.send',
@@ -259,11 +259,69 @@ const TeamChat = ({ user }) => {
     );
   };
 
+  // Subscribe to a specific room - FIXED VERSION
+  const subscribeToRoom = (roomId) => {
+    if (!stompClient || !stompClient.connected) {
+      console.log('❌ STOMP client not connected, cannot subscribe to room', roomId);
+      return;
+    }
+
+    try {
+      // Unsubscribe from previous subscription to prevent duplicates
+      if (subscriptionRef.current) {
+        subscriptionRef.current.unsubscribe();
+        console.log('🔴 Unsubscribed from previous room');
+      }
+
+      const topic = `/topic/chat/${roomId}`;
+      console.log(`🎯 Subscribing to topic: ${topic} for room ${roomId}`);
+      
+      subscriptionRef.current = stompClient.subscribe(topic, (message) => {
+        console.log('📨 WebSocket message received for room:', roomId);
+        
+        try {
+          const newMessage = JSON.parse(message.body);
+          console.log('📨 Parsed message:', newMessage);
+          
+          // FIXED: Add message to the END of the array
+          setMessages(prev => {
+            const messageExists = prev.some(msg => 
+              msg.id === newMessage.id || 
+              (msg.content === newMessage.content && 
+               msg.senderRole === newMessage.senderRole && 
+               Math.abs(new Date(msg.timestamp) - new Date(newMessage.timestamp)) < 1000)
+            );
+            
+            if (!messageExists) {
+              console.log('✅ Adding new message to END of state');
+              const updatedMessages = [...prev, newMessage];
+              return updatedMessages;
+            }
+            console.log('⚠️ Message already exists, skipping');
+            return prev;
+          });
+        } catch (error) {
+          console.error('❌ Error parsing message:', error);
+        }
+      });
+      
+      console.log(`✅ Successfully subscribed to room ${roomId}, topic: ${topic}`);
+      
+    } catch (error) {
+      console.error('❌ Subscription error:', error);
+    }
+  };
+
   // Initialize WebSocket connection
   const connectWebSocket = () => {
     try {
       console.log('🔌 Connecting to WebSocket...');
       setConnectionError('');
+      
+      // Deactivate existing client if any
+      if (stompClient) {
+        stompClient.deactivate();
+      }
       
       const client = new Client({
         brokerURL: 'ws://localhost:8080/ws-chat/websocket',
@@ -309,52 +367,7 @@ const TeamChat = ({ user }) => {
     }
   };
 
-  // Subscribe to a specific room
-  const subscribeToRoom = (roomId) => {
-    if (!stompClient || !stompClient.connected) {
-      console.log('STOMP client not connected, cannot subscribe');
-      return;
-    }
-
-    try {
-      // Unsubscribe from previous subscription to prevent duplicates
-      if (subscriptionRef.current) {
-        subscriptionRef.current.unsubscribe();
-        console.log('🔴 Unsubscribed from previous room');
-      }
-
-      subscriptionRef.current = stompClient.subscribe(`/topic/chat/${roomId}`, (message) => {
-        console.log('📨 Received message:', message);
-        try {
-          const newMessage = JSON.parse(message.body);
-          
-          // Check if message already exists to prevent duplicates
-          setMessages(prev => {
-            const messageExists = prev.some(msg => 
-              msg.id === newMessage.id || 
-              (msg.content === newMessage.content && 
-               msg.senderRole === newMessage.senderRole && 
-               Math.abs(new Date(msg.timestamp) - new Date(newMessage.timestamp)) < 1000)
-            );
-            
-            if (!messageExists) {
-              return [newMessage, ...prev];
-            }
-            return prev;
-          });
-        } catch (error) {
-          console.error('❌ Error parsing message:', error);
-        }
-      });
-      
-      console.log(`✅ Subscribed to room ${roomId}`);
-      
-    } catch (error) {
-      console.error('❌ Subscription error:', error);
-    }
-  };
-
-  // Fetch messages from REST API
+  // Fetch messages from REST API - FIXED: Sort messages by timestamp
   const fetchMessages = async (roomId) => {
     try {
       setLoading(true);
@@ -370,7 +383,10 @@ const TeamChat = ({ user }) => {
       
       const data = await response.json();
       console.log('📨 Fetched messages:', data);
-      setMessages(data);
+      
+      // FIXED: Ensure messages are sorted by timestamp (oldest first)
+      const sortedMessages = data.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+      setMessages(sortedMessages);
       
     } catch (error) {
       console.error('❌ Error fetching messages:', error);
@@ -395,7 +411,7 @@ const TeamChat = ({ user }) => {
       return;
     }
     
-    console.log(`Switching to room: ${targetRoom.name}`);
+    console.log(`🔄 Switching to room: ${targetRoom.name} (ID: ${roomId})`);
     setCurrentRoom(roomId);
     setMessages([]);
     fetchMessages(roomId);
@@ -423,10 +439,20 @@ const TeamChat = ({ user }) => {
     setDarkMode(!darkMode);
   };
 
+  // Scroll to bottom when messages change
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
+  // Re-subscribe when room changes and WebSocket is connected
+  useEffect(() => {
+    if (connected && stompClient) {
+      console.log(`🔄 Room changed to ${currentRoom}, re-subscribing...`);
+      subscribeToRoom(currentRoom);
+    }
+  }, [currentRoom, connected, stompClient]);
+
+  // Initial setup
   useEffect(() => {
     fetchMessages(currentRoom);
     connectWebSocket();
@@ -582,7 +608,7 @@ const TeamChat = ({ user }) => {
               </div>
             ) : (
               <>
-                <div className="chat-messages-list">
+                <div className="chat-messages-container">
                   {messages.length === 0 ? (
                     <div className="chat-no-messages">
                       <FaUsers className="chat-no-messages-icon" />
@@ -596,29 +622,36 @@ const TeamChat = ({ user }) => {
                     </div>
                   ) : (
                     Object.entries(messageGroups).map(([date, dateMessages]) => (
-                      <div key={date}>
+                      <div key={date} className="chat-date-group">
                         <div className="chat-date-divider">
                           <span>{date}</span>
                         </div>
-                        {dateMessages.map(message => {
+                        {dateMessages.map((message, index) => {
                           const RoleIcon = getRoleIcon(message.senderRole);
+                          
+                          // FIXED: Better own message detection
                           const isOwnMessage = message.senderRole === user?.role;
+                          
                           const senderDisplayName = getSenderDisplayName(message);
                           
                           return (
                             <div
-                              key={message.id || `${message.timestamp}-${message.content}`}
-                              className={`chat-message ${isOwnMessage ? 'chat-message-own' : ''}`}
+                              key={message.id || `${message.timestamp}-${index}`}
+                              className={`chat-message ${isOwnMessage ? 'chat-message-own' : 'chat-message-other'}`}
                             >
-                              <div 
-                                className="chat-message-avatar"
-                                style={{ backgroundColor: getRoleColor(message.senderRole) }}
-                              >
-                                <RoleIcon />
-                              </div>
+                              {!isOwnMessage && (
+                                <div 
+                                  className="chat-message-avatar"
+                                  style={{ backgroundColor: getRoleColor(message.senderRole) }}
+                                >
+                                  <RoleIcon />
+                                </div>
+                              )}
                               <div className="chat-message-content">
                                 <div className="chat-message-header">
-                                  <span className="chat-sender-name">{senderDisplayName}</span>
+                                  {!isOwnMessage && (
+                                    <span className="chat-sender-name">{senderDisplayName}</span>
+                                  )}
                                   {!isOwnMessage && (
                                     <span className="chat-sender-role">
                                       {getRoleDisplayName(message.senderRole)}
@@ -630,13 +663,21 @@ const TeamChat = ({ user }) => {
                                 </div>
                                 {renderMessageContent(message)}
                               </div>
+                              {isOwnMessage && (
+                                <div 
+                                  className="chat-message-avatar"
+                                  style={{ backgroundColor: getRoleColor(message.senderRole) }}
+                                >
+                                  <RoleIcon />
+                                </div>
+                              )}
                             </div>
                           );
                         })}
                       </div>
                     ))
                   )}
-                  <div ref={messagesEndRef} />
+                  <div ref={messagesEndRef} className="chat-scroll-anchor" />
                 </div>
               </>
             )}
@@ -710,7 +751,7 @@ const TeamChat = ({ user }) => {
                 onClick={sendMessage}
                 disabled={(!newMessage.trim() && !selectedImage) || !connected || uploading}
                 className="chat-send-button"
-                style={{ backgroundColor: getRoleColor(user?.role) }}
+                style={{ backgroundColor: '#0084ff' }}
               >
                 {uploading ? (
                   <div className="loading-dots">

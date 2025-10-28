@@ -31,19 +31,30 @@ function EmployeeList({ employees, onEmployeeDeleted, onEditEmployee }) {
   // FIXED: Proper authentication headers
   const getAuthConfig = () => {
     try {
-      const userData = localStorage.getItem('user');
-      if (!userData) {
-        console.warn('No user data found in localStorage');
+      // Get individual auth fields from localStorage
+      const username = localStorage.getItem('username');
+      const role = localStorage.getItem('userRole');
+      const token = localStorage.getItem('authToken');
+      
+      console.log('Auth headers - Username:', username, 'Role:', role);
+      
+      if (!username || !role) {
+        console.warn('Missing auth headers: username or role not found in localStorage');
+        console.log('Available localStorage items:', Object.keys(localStorage));
         return { headers: {} };
       }
       
-      const user = JSON.parse(userData);
-      return {
-        headers: {
-          'X-Username': user.username || '',
-          'X-Role': user.role || 'USER'
-        }
+      const headers = {
+        'X-Username': username,
+        'X-Role': role
       };
+      
+      // Add Authorization header if token exists
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
+      return { headers };
     } catch (error) {
       console.error('Error getting auth config:', error);
       return { headers: {} };
@@ -52,7 +63,8 @@ function EmployeeList({ employees, onEmployeeDeleted, onEditEmployee }) {
 
   const filteredEmployees = employees.filter(emp => {
     const matchesSearch = emp.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         emp.email?.toLowerCase().includes(searchTerm.toLowerCase());
+                         emp.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         emp.departmentDTO?.name?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "all" || 
                          (statusFilter === "active" && emp.active) ||
                          (statusFilter === "inactive" && !emp.active);
@@ -61,13 +73,28 @@ function EmployeeList({ employees, onEmployeeDeleted, onEditEmployee }) {
 
   const deleteEmployee = async (id) => {
     try {
+      console.log('Attempting to delete employee ID:', id);
       const config = getAuthConfig();
-      await axios.delete(`http://localhost:8080/employees/${id}`, config);
-      onEmployeeDeleted();
+      console.log('Request config:', config);
+      
+      const response = await axios.delete(`http://localhost:8080/employees/${id}`, config);
+      console.log('Delete response:', response);
+      
+      if (response.status === 200) {
+        onEmployeeDeleted();
+        alert('Employee deleted successfully');
+      }
     } catch (err) {
       console.error("Error deleting employee:", err);
+      console.log('Full error response:', err.response);
+      console.log('Error data:', err.response?.data);
+      console.log('Error message:', err.response?.data?.message);
+      
       if (err.response?.status === 403) {
         alert("Access denied: You don't have permission to delete employees.");
+      } else if (err.response?.status === 500) {
+        const errorMessage = err.response?.data?.message || err.response?.data || "Internal server error";
+        alert("Server error: " + errorMessage);
       } else {
         alert("Error deleting employee: " + (err.response?.data?.message || err.message));
       }
@@ -97,24 +124,32 @@ function EmployeeList({ employees, onEmployeeDeleted, onEditEmployee }) {
 
   const calculateAge = (dateString) => {
     if (!dateString) return 'N/A';
-    const today = new Date();
-    const birthDate = new Date(dateString);
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-    
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
+    try {
+      const today = new Date();
+      const birthDate = new Date(dateString);
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      return age;
+    } catch  {
+      return 'N/A';
     }
-    return age;
   };
 
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+    try {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    } catch {
+      return 'Invalid Date';
+    }
   };
 
   return (
@@ -122,7 +157,7 @@ function EmployeeList({ employees, onEmployeeDeleted, onEditEmployee }) {
       <div className="list-header">
         <div className="header-content">
           <div className="header-title">
-            <h2></h2>
+            <h2>Employee Directory</h2>
             <span className="employee-count">{filteredEmployees.length} of {employees.length} employees</span>
           </div>
           <div className="header-actions">
@@ -148,13 +183,14 @@ function EmployeeList({ employees, onEmployeeDeleted, onEditEmployee }) {
                 <option value="inactive">Inactive</option>
               </select>
             </div>
+            {/* Debug button - remove in production */}
           </div>
         </div>
       </div>
 
       <div className="employee-grid">
         {filteredEmployees.map((emp) => (
-          <div key={emp.id} className="modern-employee-card">
+          <div key={emp.id} className={`modern-employee-card ${!emp.active ? 'inactive-employee' : ''}`}>
             <div className="card-header">
               <div className="employee-avatar">
                 <FaUser />
@@ -233,8 +269,8 @@ function EmployeeList({ employees, onEmployeeDeleted, onEditEmployee }) {
       )}
 
       {isModalOpen && selectedEmployee && (
-        <div className="modern-modal-overlay">
-          <div className="employee-details-modal">
+        <div className="modern-modal-overlay" onClick={closeModal}>
+          <div className="employee-details-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>Employee Details</h2>
               <button className="modal-close" onClick={closeModal}>
@@ -296,6 +332,11 @@ function EmployeeList({ employees, onEmployeeDeleted, onEditEmployee }) {
                   <p className="department-detail">
                     <FaBuilding />
                     {selectedEmployee.departmentDTO?.name || "No Department Assigned"}
+                    {selectedEmployee.departmentDTO?.description && (
+                      <span className="department-description">
+                        - {selectedEmployee.departmentDTO.description}
+                      </span>
+                    )}
                   </p>
                 </div>
               </div>
@@ -321,8 +362,8 @@ function EmployeeList({ employees, onEmployeeDeleted, onEditEmployee }) {
       )}
 
       {confirmDelete.show && (
-        <div className="modern-modal-overlay">
-          <div className="delete-confirmation">
+        <div className="modern-modal-overlay" onClick={() => setConfirmDelete({ show: false, empId: null, empName: "" })}>
+          <div className="delete-confirmation" onClick={(e) => e.stopPropagation()}>
             <div className="delete-header">
               <div className="warning-icon">
                 <FaTrash />
