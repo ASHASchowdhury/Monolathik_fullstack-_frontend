@@ -10,6 +10,7 @@ import "./AIChat.css";
 function AIChat() {
   // State management for chat functionality
   const [messages, setMessages] = useState([]);
+  const [cvLink, setCvLink] = useState([]); 
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -27,9 +28,9 @@ function AIChat() {
   const fileInputRef = useRef(null);
 
   // API Configuration
-  const PDF_AI_API_BASE = "http://10.0.6.22:3333"; // Your PDF AI server
+  const PDF_AI_API_BASE = "http://10.0.6.22:3737"; // Your PDF AI server
   const GOOGLE_AI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent";
-  const GOOGLE_AI_API_KEY = "AIzaSyAjfD4Im7OXMtk2vkI9Hb1rY4es2TnNiYE";
+  const GOOGLE_AI_API_KEY = "AIzaSyBE1SSqtM__2cxka_C0ND_wgVpTJPYTihc";
 
   // Initialize user info from localStorage on component mount
   useEffect(() => {
@@ -147,6 +148,8 @@ function AIChat() {
       console.log("PDF Upload Response:", response.data);
 
       if (response.status === 200) {
+         
+        if(response.data.status_code ===200) {
         setPdfUploaded(true);
         const successMessage = {
           id: Date.now(),
@@ -155,11 +158,24 @@ function AIChat() {
           timestamp: new Date(),
           role: "PDF AI Assistant"
         };
+    setMessages(prev => [...prev, successMessage]);
+      }  
+      if(response.data.status_code ===201) {
+        setPdfUploaded(true);
+        const successMessage = {
+          id: Date.now(),
+          text: `PDF "${selectedFile.name}" already exists in the system. You can now ask questions about it.`,
+          sender: "ai",
+          timestamp: new Date(),
+          role: "PDF AI Assistant"
+        };
         setMessages(prev => [...prev, successMessage]);
-      } else {
+      }
+    }
+      else {
         throw new Error(response.data?.error || "Upload failed");
       }
-
+      
     } catch (err) {
       console.error("Error uploading PDF:", err);
       
@@ -324,45 +340,51 @@ function AIChat() {
     return defaultResponses[Math.floor(Math.random() * defaultResponses.length)];
   };
 
-  // Call PDF AI API for PDF mode
+  // Call PDF AI API for PDF mode - UPDATED TO USE JSON FORMAT
   const callPdfAI = async (message) => {
-    const params = new URLSearchParams();
-    params.append('question', message);
-
-    const response = await axios.post(
-      `${PDF_AI_API_BASE}/ask`,
-      params,
-      {
-        headers: {
-          'accept': 'application/json',
-          'Content-Type': 'application/x-www-form-urlencoded',
+    try {
+      const response = await axios.post(
+        `${PDF_AI_API_BASE}/ask`,
+        {
+          question: message
         },
-        timeout: 30000
+        {
+          headers: {
+            'accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+          timeout: 30000
+        }
+      );
+
+      console.log("PDF AI Response:", response.data);
+
+      let aiResponseText = "";
+
+      // Handle response format from PDF AI
+      if (response.data) {
+        if (typeof response.data === 'string') {
+          aiResponseText = response.data;
+        } else if (response.data.answer) {
+          aiResponseText = response.data.answer;
+        } else if (response.data.response) {
+          aiResponseText = response.data.response;
+        } else if (response.data.message) {
+          aiResponseText = response.data.message;
+        } else {
+          aiResponseText = JSON.stringify(response.data);
+        }
       }
-    );
 
-    let aiResponseText = "";
-
-    // Handle response format from PDF AI
-    if (response.data) {
-      if (typeof response.data === 'string') {
-        aiResponseText = response.data;
-      } else if (response.data.answer) {
-        aiResponseText = response.data.answer;
-      } else if (response.data.response) {
-        aiResponseText = response.data.response;
-      } else if (response.data.message) {
-        aiResponseText = response.data.message;
-      } else {
-        aiResponseText = JSON.stringify(response.data);
+      if (!aiResponseText || aiResponseText.toLowerCase().includes("error")) {
+        throw new Error(aiResponseText || "No response from PDF AI");
       }
-    }
 
-    if (!aiResponseText || aiResponseText.toLowerCase().includes("error")) {
-      throw new Error(aiResponseText || "No response from PDF AI");
+      return aiResponseText;
+    } catch (err) {
+      console.error("PDF AI API error:", err);
+      throw new Error(`PDF AI Error: ${err.response?.data?.detail || err.message || "Unknown error"}`);
     }
-
-    return aiResponseText;
   };
 
   // Send message to appropriate API based on mode
@@ -398,6 +420,14 @@ function AIChat() {
       if (usePdfMode) {
         // Use PDF AI API for PDF mode
         aiResponseText = await callPdfAI(inputMessage);
+      if (aiResponseText.includes('.pdf')) {
+        const splited_text = aiResponseText.split('source:');
+        if(splited_text.length >1){
+          aiResponseText= splited_text[0];
+        const splited_text1 = splited_text[1].split(',');
+        const links= splited_text1.map(part => part.replace("]", "").trim());
+        setCvLink(links);
+        }}
         aiRole = "PDF AI Assistant";
         aiSource = "pdf-ai";
       } else {
@@ -425,7 +455,7 @@ function AIChat() {
       let errorText = "Sorry, I'm having trouble processing your request. ";
       
       if (err.response) {
-        errorText += `Server error: ${err.response.status} - ${err.response.data?.error || 'Unknown error'}`;
+        errorText += `Server error: ${err.response.status} - ${err.response.data?.error || err.response.data?.detail || 'Unknown error'}`;
       } else if (err.request) {
         errorText += "No response from server. Please check your connection.";
       } else {
@@ -657,6 +687,11 @@ function AIChat() {
               </div>
               <div className="message-text">
                 {message.text}
+                {cvLink.length > 0 && message.sender==='ai' && cvLink.map((item=>{
+                  return                <div style={{cursor:'pointer', fontWeight:'bold'}}>
+                  <p onClick={()=>window.open(`${'http://'+item}`, "_blank")} target="_blank">http://{item}</p>  
+              </div>
+                }))}
               </div>
               {message.isError && (
                 <div className="error-indicator">

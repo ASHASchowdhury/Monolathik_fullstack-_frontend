@@ -524,7 +524,7 @@
   max-width: 100%;
 }
 
-/* Sender messages - Messenger Blue */
+/* Sender messages - RIGHT side with Messenger Blue */
 .chat-message-own .chat-message-content {
   background: var(--chat-messenger-blue);
   color: white;
@@ -532,7 +532,7 @@
   border-bottom-right-radius: 4px;
 }
 
-/* Other messages - Standard styling */
+/* Other messages - LEFT side with standard styling */
 .chat-message-other .chat-message-content {
   background: var(--chat-bg-secondary);
   color: var(--chat-text-secondary);
